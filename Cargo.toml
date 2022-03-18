@@ -1,0 +1,8 @@
+[package]
+name = "hello-rs"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+serde_json = "1.0"
+openweathermap = "0.2.4"
