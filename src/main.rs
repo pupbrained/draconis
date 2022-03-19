@@ -3,6 +3,7 @@ use {
     std::{env::var, fs},
     subprocess::*,
     substring::Substring,
+    chrono::prelude::*,
 };
 
 fn read_config() -> serde_json::Value {
@@ -103,7 +104,7 @@ fn check_updates() -> i32 {
                 .capture()
                 .unwrap()
                 .stdout_str();
-                total_updates += update_count.substring(6, 7).parse::<i32>().unwrap();
+                total_updates += update_count.substring(6, 7).parse::<i32>().unwrap_or(0);
             }
             if pm[i].to_string().trim_matches('\"') == "apk" {
                 let update_count =
@@ -140,8 +141,15 @@ fn main() {
         .get("api_key")
         .expect("Couldn't find 'api_key' attribute.")
         .to_string();
+    let dt = Local::now();
+    let time = dt.hour(); 
 
-    println!("Hello, {}!", name.trim_matches('\"'));
+    match time {
+        6..=12 => println!("🌇 Good morning, {}!", name.trim_matches('\"')),
+        13..=18 => println!("🏙️ Good afternoon, {}!", name.trim_matches('\"')),
+        19..=23 => println!("🌆 Good evening, {}!", name.trim_matches('\"')),
+        _ => println!("🌃 Good night, {}!", name.trim_matches('\"')),
+    }
 
     match &weather(
         location.trim_matches('\"'),
@@ -149,11 +157,20 @@ fn main() {
         lang.trim_matches('\"'),
         api_key.trim_matches('\"'),
     ) {
-        Ok(current) => println!(
-            "Right now in {}, it's a {} outside.",
-            current.name.as_str(),
-            current.weather[0].description.as_str(),
-        ),
+        Ok(current) => {
+            let deg;
+            if units.trim_matches('\"') == "imperial" {
+                deg = "F";
+            } else {
+                deg = "C";
+            }
+            println!(
+                "☁️ {} {}°{}",
+                current.weather[0].main.as_str(),
+                current.main.temp.to_string().substring(0, 2),
+                deg
+            )
+        }
         Err(e) => panic!("Could not fetch weather because: {}", e),
     }
 
@@ -161,12 +178,12 @@ fn main() {
 
     match count {
         -1 => (),
-        0 => println!("There are currently no updates available."),
-        1 => println!("There is currently 1 update available."),
-        _ => println!("There are currently {} updates available.", count),
+        0 => println!("📦 No updates"),
+        1 => println!("📦 1 update"),
+        _ => println!("📦 {} updates", count),
     }
 
-    println!("Here's your fetch:\n");
+    println!();
 
     Exec::cmd("neofetch").join().expect("Failed to run fetch!");
 }
