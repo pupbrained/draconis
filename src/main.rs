@@ -1,6 +1,6 @@
 use {
     openweathermap::blocking::weather,
-    std::{env::var, fs, process::Command, thread, time},
+    std::{env::var, fs},
     subprocess::*,
     substring::Substring,
 };
@@ -50,6 +50,24 @@ fn check_updates() -> i32 {
                     .stdout_str();
             total_updates += update_count.substring(0, 1).parse::<i32>().unwrap();
         }
+        if pm[0].to_string().trim_matches('\"') == "portage" {
+            let update_count = {
+                Exec::cmd("eix").arg("--installed").arg("--upgrade")
+                    | Exec::cmd("grep").arg("-P").arg("Found \\d+ matches")
+            }
+            .capture()
+            .unwrap()
+            .stdout_str();
+            total_updates += update_count.substring(6, 7).parse::<i32>().unwrap();
+        }
+        if pm[0].to_string().trim_matches('\"') == "apk" {
+            let update_count =
+                { Exec::cmd("apk").arg("-u").arg("list") | Exec::cmd("wc").arg("-l") }
+                    .capture()
+                    .unwrap()
+                    .stdout_str();
+            total_updates += update_count.substring(0, 1).parse::<i32>().unwrap();
+        }
     } else {
         for i in 0..pm.len() {
             if pm[i].to_string().trim_matches('\"') == "pacman" {
@@ -72,6 +90,24 @@ fn check_updates() -> i32 {
             if pm[i].to_string().trim_matches('\"') == "xbps" {
                 let update_count =
                     { Exec::cmd("xbps-install").arg("-Sun") | Exec::cmd("wc").arg("-l") }
+                        .capture()
+                        .unwrap()
+                        .stdout_str();
+                total_updates += update_count.substring(0, 1).parse::<i32>().unwrap();
+            }
+            if pm[i].to_string().trim_matches('\"') == "portage" {
+                let update_count = {
+                    Exec::cmd("eix").arg("--installed").arg("--upgrade")
+                        | Exec::cmd("grep").arg("-P").arg("Found \\d+ matches")
+                }
+                .capture()
+                .unwrap()
+                .stdout_str();
+                total_updates += update_count.substring(6, 7).parse::<i32>().unwrap();
+            }
+            if pm[i].to_string().trim_matches('\"') == "apk" {
+                let update_count =
+                    { Exec::cmd("apk").arg("-u").arg("list") | Exec::cmd("wc").arg("-l") }
                         .capture()
                         .unwrap()
                         .stdout_str();
@@ -132,10 +168,5 @@ fn main() {
 
     println!("Here's your fetch:\n");
 
-    Command::new("neofetch")
-        .spawn()
-        .expect("Failed to run fetch command.");
-
-    let sleep = time::Duration::from_millis(250);
-    thread::sleep(sleep);
+    Exec::cmd("neofetch").join().expect("Failed to run fetch!");
 }
