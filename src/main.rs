@@ -157,16 +157,41 @@ fn main() {
         .get("api_key")
         .expect("Couldn't find 'api_key' attribute.")
         .to_string();
+    let time_format = json.get("time_format").expect("Couldn't find 'time_format' attribute.").to_string();
     let dt = Local::now();
-    let time = dt.hour();
+    let time = if time_format.trim_matches('\"') == "12h" {
+        dt.format("%l:%M %p").to_string()
+    } else if time_format.trim_matches('\"') == "24h" {
+        dt.format("%H:%M").to_string()
+    } else {
+        "off".to_string()
+    };
 
-    match time {
+    match dt.hour() {
         6..=11 => println!("🌇 Good morning, {}!", name.trim_matches('\"')),
         12..=17 => println!("🏙️ Good afternoon, {}!", name.trim_matches('\"')),
         18..=22 => println!("🌆 Good evening, {}!", name.trim_matches('\"')),
         _ => println!("🌃 Good night, {}!", name.trim_matches('\"')),
     }
 
+    if time != "off" {
+        match dt.hour() {
+            0 | 12 => println!("🕛 {}", time.trim_start_matches(' ')),
+            1 | 13 => println!("🕐 {}", time.trim_start_matches(' ')),
+            2 | 14 => println!("🕑 {}", time.trim_start_matches(' ')),
+            3 | 15 => println!("🕒 {}", time.trim_start_matches(' ')),
+            4 | 16 => println!("🕓 {}", time.trim_start_matches(' ')),
+            5 | 17 => println!("🕔 {}", time.trim_start_matches(' ')),
+            6 | 18 => println!("🕕 {}", time.trim_start_matches(' ')),
+            7 | 19 => println!("🕖 {}", time.trim_start_matches(' ')),
+            8 | 20 => println!("🕗 {}", time.trim_start_matches(' ')),
+            9 | 21 => println!("🕘 {}", time.trim_start_matches(' ')),
+            10 | 22 => println!("🕙 {}", time.trim_start_matches(' ')),
+            11 | 23 => println!("🕚 {}", time.trim_start_matches(' ')),
+            _ => (),
+        }
+    }
+    
     match &weather(
         location.trim_matches('\"'),
         units.trim_matches('\"'),

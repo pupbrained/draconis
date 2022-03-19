@@ -1,5 +1,6 @@
 {
     "name": "John",
+    "time_format": "12h",
     "location": "New York",
     "units": "imperial",
     "lang": "en",
