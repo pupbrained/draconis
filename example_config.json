@@ -3,5 +3,6 @@
     "location": "New York",
     "units": "imperial",
     "lang": "en",
-    "api_key": "abc123"
+    "api_key": "abc123",
+    "package_managers": ["pacman", "apt"]
 }
