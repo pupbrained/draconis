@@ -135,6 +135,14 @@ fn check_updates() -> i32 {
     total_updates
 }
 
+fn uppercase(s: &str) -> String {
+    let mut c = s.chars();
+    match c.next() {
+        None => String::new(),
+        Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+    }
+}
+
 fn main() {
     let json = read_config();
     let name = json
@@ -157,7 +165,10 @@ fn main() {
         .get("api_key")
         .expect("Couldn't find 'api_key' attribute.")
         .to_string();
-    let time_format = json.get("time_format").expect("Couldn't find 'time_format' attribute.").to_string();
+    let time_format = json
+        .get("time_format")
+        .expect("Couldn't find 'time_format' attribute.")
+        .to_string();
     let dt = Local::now();
     let time = if time_format.trim_matches('\"') == "12h" {
         dt.format("%l:%M %p").to_string()
@@ -175,23 +186,25 @@ fn main() {
     }
 
     if time != "off" {
+        let time_icon;
         match dt.hour() {
-            0 | 12 => println!("🕛 {}", time.trim_start_matches(' ')),
-            1 | 13 => println!("🕐 {}", time.trim_start_matches(' ')),
-            2 | 14 => println!("🕑 {}", time.trim_start_matches(' ')),
-            3 | 15 => println!("🕒 {}", time.trim_start_matches(' ')),
-            4 | 16 => println!("🕓 {}", time.trim_start_matches(' ')),
-            5 | 17 => println!("🕔 {}", time.trim_start_matches(' ')),
-            6 | 18 => println!("🕕 {}", time.trim_start_matches(' ')),
-            7 | 19 => println!("🕖 {}", time.trim_start_matches(' ')),
-            8 | 20 => println!("🕗 {}", time.trim_start_matches(' ')),
-            9 | 21 => println!("🕘 {}", time.trim_start_matches(' ')),
-            10 | 22 => println!("🕙 {}", time.trim_start_matches(' ')),
-            11 | 23 => println!("🕚 {}", time.trim_start_matches(' ')),
-            _ => (),
+            0 | 12 => time_icon = "🕛",
+            1 | 13 => time_icon = "🕐",
+            2 | 14 => time_icon = "🕑",
+            3 | 15 => time_icon = "🕒",
+            4 | 16 => time_icon = "🕓",
+            5 | 17 => time_icon = "🕔",
+            6 | 18 => time_icon = "🕕",
+            7 | 19 => time_icon = "🕖",
+            8 | 20 => time_icon = "🕗",
+            9 | 21 => time_icon = "🕘",
+            10 | 22 => time_icon = "🕙",
+            11 | 23 => time_icon = "🕚",
+            _ => time_icon = "🕛",
         }
+        println!("{} {}", time_icon, time.trim_start_matches(' '));
     }
-    
+
     match &weather(
         location.trim_matches('\"'),
         units.trim_matches('\"'),
@@ -204,9 +217,35 @@ fn main() {
             } else {
                 "C"
             };
+            let icon_code = &current.weather[0].icon;
+            let icon;
+            match icon_code.as_ref() {
+                "01d" => icon = "☀️",
+                "01n" => icon = "🌙",
+                "02d" => icon = "⛅️",
+                "02n" => icon = "🌙",
+                "03d" => icon = "☁️",
+                "03n" => icon = "☁️",
+                "04d" => icon = "☁️",
+                "04n" => icon = "☁️",
+                "09d" => icon = "🌧️",
+                "09n" => icon = "🌧️",
+                "10d" => icon = "🌧️",
+                "10n" => icon = "🌧️",
+                "11d" => icon = "⛈️",
+                "11n" => icon = "⛈️",
+                "13d" => icon = "🌨️",
+                "13n" => icon = "🌨️",
+                "40d" => icon = "🌫️",
+                "40n" => icon = "🌫️",
+                "50d" => icon = "🌫️",
+                "50n" => icon = "🌫️",
+                _ => icon = "❓",
+            }
             println!(
-                "☁️ {} {}°{}",
-                current.weather[0].main.as_str(),
+                "{} {} {}°{}",
+                icon,
+                uppercase(current.weather[0].description.as_ref()),
                 current.main.temp.to_string().substring(0, 2),
                 deg
             )
@@ -218,9 +257,18 @@ fn main() {
 
     match count {
         -1 => (),
-        0 => println!("📦 No updates"),
-        1 => println!("📦 1 update"),
-        _ => println!("📦 {} updates", count),
+        0 => println!("☑️ Up to date"),
+        1 => println!("1️⃣ 1 update"),
+        2 => println!("2️⃣ 2 updates"),
+        3 => println!("3️⃣ 3 updates"),
+        4 => println!("4️⃣ 4 updates"),
+        5 => println!("5️⃣ 5 updates"),
+        6 => println!("6️⃣ 6 updates"),
+        7 => println!("7️⃣ 7 updates"),
+        8 => println!("8️⃣ 8 updates"),
+        9 => println!("9️⃣ 9 updates"),
+        10 => println!("🔟 10 updates"),
+        _ => println!("‼️ {} updates", count),
     }
 
     println!();
