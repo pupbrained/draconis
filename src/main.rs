@@ -1,9 +1,9 @@
 use {
+    chrono::prelude::*,
     openweathermap::blocking::weather,
     std::{env::var, fs},
     subprocess::*,
     substring::Substring,
-    chrono::prelude::*,
 };
 
 fn read_config() -> serde_json::Value {
@@ -26,93 +26,109 @@ fn check_updates() -> i32 {
     let pm = json["package_managers"].as_array().unwrap();
 
     if pm.len() == 1 {
-        if pm[0].to_string().trim_matches('\"') == "pacman" {
-            let update_count = { Exec::cmd("checkupdates") | Exec::cmd("wc").arg("-l") }
-                .capture()
-                .unwrap()
-                .stdout_str();
-            total_updates += update_count.substring(0, 1).parse::<i32>().unwrap();
-        }
-        if pm[0].to_string().trim_matches('\"') == "apt" {
-            let update_count = {
-                Exec::cmd("apt-get").arg("upgrade").arg("-s")
-                    | Exec::cmd("grep").arg("-P").arg("^\\d+ upgraded")
-            }
-            .capture()
-            .unwrap()
-            .stdout_str();
-            total_updates += update_count.substring(0, 1).parse::<i32>().unwrap();
-        }
-        if pm[0].to_string().trim_matches('\"') == "xbps" {
-            let update_count =
-                { Exec::cmd("xbps-install").arg("-Sun") | Exec::cmd("wc").arg("-l") }
-                    .capture()
-                    .unwrap()
-                    .stdout_str();
-            total_updates += update_count.substring(0, 1).parse::<i32>().unwrap();
-        }
-        if pm[0].to_string().trim_matches('\"') == "portage" {
-            let update_count = {
-                Exec::cmd("eix").arg("--installed").arg("--upgrade")
-                    | Exec::cmd("grep").arg("-P").arg("Found \\d+ matches")
-            }
-            .capture()
-            .unwrap()
-            .stdout_str();
-            total_updates += update_count.substring(6, 7).parse::<i32>().unwrap();
-        }
-        if pm[0].to_string().trim_matches('\"') == "apk" {
-            let update_count =
-                { Exec::cmd("apk").arg("-u").arg("list") | Exec::cmd("wc").arg("-l") }
-                    .capture()
-                    .unwrap()
-                    .stdout_str();
-            total_updates += update_count.substring(0, 1).parse::<i32>().unwrap();
-        }
-    } else {
-        for i in 0..pm.len() {
-            if pm[i].to_string().trim_matches('\"') == "pacman" {
+        match pm[0].to_string().trim_matches('\"') {
+            "pacman" => {
                 let update_count = { Exec::cmd("checkupdates") | Exec::cmd("wc").arg("-l") }
                     .capture()
                     .unwrap()
                     .stdout_str();
-                total_updates += update_count.substring(0, 1).parse::<i32>().unwrap();
+                total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
             }
-            if pm[i].to_string().trim_matches('\"') == "apt" {
+            "apt" => {
                 let update_count = {
                     Exec::cmd("apt-get").arg("upgrade").arg("-s")
                         | Exec::cmd("grep").arg("-P").arg("^\\d+ upgraded")
+                        | Exec::cmd("cut").arg("-d").arg(" ").arg("-f1")
                 }
                 .capture()
                 .unwrap()
                 .stdout_str();
-                total_updates += update_count.substring(0, 1).parse::<i32>().unwrap();
+                total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
             }
-            if pm[i].to_string().trim_matches('\"') == "xbps" {
+            "xbps" => {
                 let update_count =
                     { Exec::cmd("xbps-install").arg("-Sun") | Exec::cmd("wc").arg("-l") }
                         .capture()
                         .unwrap()
                         .stdout_str();
-                total_updates += update_count.substring(0, 1).parse::<i32>().unwrap();
+                total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
             }
-            if pm[i].to_string().trim_matches('\"') == "portage" {
+            "portage" => {
                 let update_count = {
                     Exec::cmd("eix").arg("--installed").arg("--upgrade")
                         | Exec::cmd("grep").arg("-P").arg("Found \\d+ matches")
+                        | Exec::cmd("cut").arg("-d").arg(" ").arg("-f2")
                 }
                 .capture()
                 .unwrap()
                 .stdout_str();
-                total_updates += update_count.substring(6, 7).parse::<i32>().unwrap_or(0);
+                total_updates += update_count
+                    .trim_end_matches('\n')
+                    .parse::<i32>()
+                    .unwrap_or(0);
             }
-            if pm[i].to_string().trim_matches('\"') == "apk" {
+            "apk" => {
                 let update_count =
                     { Exec::cmd("apk").arg("-u").arg("list") | Exec::cmd("wc").arg("-l") }
                         .capture()
                         .unwrap()
                         .stdout_str();
-                total_updates += update_count.substring(0, 1).parse::<i32>().unwrap();
+                total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
+            }
+            _ => (),
+        }
+    } else {
+        for i in 0..pm.len() {
+            match pm[i].to_string().trim_matches('\"') {
+                "pacman" => {
+                    let update_count = { Exec::cmd("checkupdates") | Exec::cmd("wc").arg("-l") }
+                        .capture()
+                        .unwrap()
+                        .stdout_str();
+                    total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                }
+                "apt" => {
+                    let update_count = {
+                        Exec::cmd("apt-get").arg("upgrade").arg("-s")
+                            | Exec::cmd("grep").arg("-P").arg("^\\d+ upgraded")
+                            | Exec::cmd("cut").arg("-d").arg(" ").arg("-f1")
+                    }
+                    .capture()
+                    .unwrap()
+                    .stdout_str();
+                    total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                }
+                "xbps" => {
+                    let update_count =
+                        { Exec::cmd("xbps-install").arg("-Sun") | Exec::cmd("wc").arg("-l") }
+                            .capture()
+                            .unwrap()
+                            .stdout_str();
+                    total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                }
+                "portage" => {
+                    let update_count = {
+                        Exec::cmd("eix").arg("--installed").arg("--upgrade")
+                            | Exec::cmd("grep").arg("-P").arg("Found \\d+ matches")
+                            | Exec::cmd("cut").arg("-d").arg(" ").arg("-f2")
+                    }
+                    .capture()
+                    .unwrap()
+                    .stdout_str();
+                    total_updates += update_count
+                        .trim_end_matches('\n')
+                        .parse::<i32>()
+                        .unwrap_or(0);
+                }
+                "apk" => {
+                    let update_count =
+                        { Exec::cmd("apk").arg("-u").arg("list") | Exec::cmd("wc").arg("-l") }
+                            .capture()
+                            .unwrap()
+                            .stdout_str();
+                    total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                }
+                _ => (),
             }
         }
     };
@@ -142,12 +158,12 @@ fn main() {
         .expect("Couldn't find 'api_key' attribute.")
         .to_string();
     let dt = Local::now();
-    let time = dt.hour(); 
+    let time = dt.hour();
 
     match time {
-        6..=12 => println!("🌇 Good morning, {}!", name.trim_matches('\"')),
-        13..=18 => println!("🏙️ Good afternoon, {}!", name.trim_matches('\"')),
-        19..=23 => println!("🌆 Good evening, {}!", name.trim_matches('\"')),
+        6..=11 => println!("🌇 Good morning, {}!", name.trim_matches('\"')),
+        12..=17 => println!("🏙️ Good afternoon, {}!", name.trim_matches('\"')),
+        18..=22 => println!("🌆 Good evening, {}!", name.trim_matches('\"')),
         _ => println!("🌃 Good night, {}!", name.trim_matches('\"')),
     }
 
