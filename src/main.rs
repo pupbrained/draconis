@@ -1,56 +1,85 @@
 use {
     openweathermap::blocking::weather,
-    std::{
-        env::var,
-        fs,
-        io::{Read, Write},
-        process::{Command, Stdio},
-        thread, time,
-    },
+    std::{env::var, fs, process::Command, thread, time},
+    subprocess::*,
+    substring::Substring,
 };
 
 fn read_config() -> serde_json::Value {
     let path = format!("{}/.config/hello-rs/config.json", var("HOME").unwrap());
-    let file = fs::File::open(path)
-        .expect("Failed to open config file.");
+    let file = fs::File::open(path).expect("Failed to open config file.");
     let json: serde_json::Value =
         serde_json::from_reader(file).expect("Failed to parse config file as a JSON.");
     json
 }
 
 fn check_updates() -> i32 {
-    let mut update_check = Command::new("checkupdates")
-        .stdout(Stdio::piped())
-        .spawn()
-        .unwrap();
+    let mut total_updates = 0;
 
-    let mut word_count = Command::new("wc")
-        .arg("-l")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()
-        .unwrap();
+    let json = read_config();
 
-    if let Some(ref mut stdout) = update_check.stdout {
-        if let Some(ref mut stdin) = word_count.stdin {
-            let mut buf: Vec<u8> = Vec::new();
-            stdout.read_to_end(&mut buf).unwrap();
-            stdin.write_all(&buf).unwrap();
-        }
+    if json["package_managers"] == serde_json::json![null] {
+        return -1;
     }
 
-    let res = word_count
-        .wait_with_output()
-        .unwrap()
-        .stdout
-        .to_ascii_uppercase();
+    let pm = json["package_managers"].as_array().unwrap();
 
-    let s = match std::str::from_utf8(&res) {
-        Ok(v) => v,
-        Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+    if pm.len() == 1 {
+        if pm[0].to_string().trim_matches('\"') == "pacman" {
+            let update_count = { Exec::cmd("checkupdates") | Exec::cmd("wc").arg("-l") }
+                .capture()
+                .unwrap()
+                .stdout_str();
+            total_updates += update_count.substring(0, 1).parse::<i32>().unwrap();
+        }
+        if pm[0].to_string().trim_matches('\"') == "apt" {
+            let update_count = {
+                Exec::cmd("apt-get").arg("upgrade").arg("-s")
+                    | Exec::cmd("grep").arg("-P").arg("^\\d+ upgraded")
+            }
+            .capture()
+            .unwrap()
+            .stdout_str();
+            total_updates += update_count.substring(0, 1).parse::<i32>().unwrap();
+        }
+        if pm[0].to_string().trim_matches('\"') == "xbps" {
+            let update_count =
+                { Exec::cmd("xbps-install").arg("-Sun") | Exec::cmd("wc").arg("-l") }
+                    .capture()
+                    .unwrap()
+                    .stdout_str();
+            total_updates += update_count.substring(0, 1).parse::<i32>().unwrap();
+        }
+    } else {
+        for i in 0..pm.len() {
+            if pm[i].to_string().trim_matches('\"') == "pacman" {
+                let update_count = { Exec::cmd("checkupdates") | Exec::cmd("wc").arg("-l") }
+                    .capture()
+                    .unwrap()
+                    .stdout_str();
+                total_updates += update_count.substring(0, 1).parse::<i32>().unwrap();
+            }
+            if pm[i].to_string().trim_matches('\"') == "apt" {
+                let update_count = {
+                    Exec::cmd("apt-get").arg("upgrade").arg("-s")
+                        | Exec::cmd("grep").arg("-P").arg("^\\d+ upgraded")
+                }
+                .capture()
+                .unwrap()
+                .stdout_str();
+                total_updates += update_count.substring(0, 1).parse::<i32>().unwrap();
+            }
+            if pm[i].to_string().trim_matches('\"') == "xbps" {
+                let update_count =
+                    { Exec::cmd("xbps-install").arg("-Sun") | Exec::cmd("wc").arg("-l") }
+                        .capture()
+                        .unwrap()
+                        .stdout_str();
+                total_updates += update_count.substring(0, 1).parse::<i32>().unwrap();
+            }
+        }
     };
-
-    s.trim_end_matches('\n').parse().unwrap()
+    total_updates
 }
 
 fn main() {
@@ -95,6 +124,7 @@ fn main() {
     let count = check_updates();
 
     match count {
+        -1 => (),
         0 => println!("There are currently no updates available."),
         1 => println!("There is currently 1 update available."),
         _ => println!("There are currently {} updates available.", count),
