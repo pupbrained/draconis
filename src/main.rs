@@ -158,12 +158,11 @@ fn main() {
         api_key.trim_matches('\"'),
     ) {
         Ok(current) => {
-            let deg;
-            if units.trim_matches('\"') == "imperial" {
-                deg = "F";
+            let deg = if units.trim_matches('\"') == "imperial" {
+                "F"
             } else {
-                deg = "C";
-            }
+                "C"
+            };
             println!(
                 "☁️ {} {}°{}",
                 current.weather[0].main.as_str(),
