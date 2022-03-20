@@ -4,6 +4,8 @@ use {
     std::{env::var, fs},
     subprocess::*,
     substring::Substring,
+    curl::*,
+    serde_json::Value
 };
 
 fn read_config() -> serde_json::Value {
@@ -291,6 +293,24 @@ fn main() {
         10 => println!("🔟 10 updates"),
         _ => println!("‼️ {} updates", count),
     }
+
+    let url = "https://programming-quotes-api.herokuapp.com/quotes/random";
+    let resp = http::handle()
+        .get(url)
+        .exec()
+        .unwrap_or_else(|e| {
+            panic!("Failed to get {}; error is {}", url, e);
+        });
+    let body = std::str::from_utf8(resp.get_body()).unwrap_or_else(|e| {
+        panic!("Failed to parse response from {}; error is {}", url, e);
+    });
+    let json: Value = serde_json::from_str(body).unwrap_or_else(|e| {
+        panic!("Failed to parse response from {}; error is {}", url, e);
+    });
+    let quote = json["en"].as_str().unwrap_or_else(|| {
+        panic!("Failed to parse response from {}", url);
+    });
+    println!("💭 {}", quote);
 
     println!();
 
