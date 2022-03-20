@@ -54,18 +54,18 @@ fn check_updates() -> i32 {
                 total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
             }
             "portage" => {
-                let update_count = {
-                    Exec::cmd("eix").arg("--installed").arg("--upgrade")
-                        | Exec::cmd("grep").arg("-P").arg("Found \\d+ matches")
-                        | Exec::cmd("cut").arg("-d").arg(" ").arg("-f2")
+                let update_count = { Exec::cmd("eix").arg("-u") }
+                    .capture()
+                    .unwrap()
+                    .stdout_str();
+                if update_count == "No matches found" {
+                    ()
+                } else {
+                    total_updates += update_count
+                        .trim_end_matches('\n')
+                        .parse::<i32>()
+                        .unwrap_or(1);
                 }
-                .capture()
-                .unwrap()
-                .stdout_str();
-                total_updates += update_count
-                    .trim_end_matches('\n')
-                    .parse::<i32>()
-                    .unwrap_or(0);
             }
             "apk" => {
                 let update_count =
@@ -107,18 +107,18 @@ fn check_updates() -> i32 {
                     total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
                 }
                 "portage" => {
-                    let update_count = {
-                        Exec::cmd("eix").arg("--installed").arg("--upgrade")
-                            | Exec::cmd("grep").arg("-P").arg("Found \\d+ matches")
-                            | Exec::cmd("cut").arg("-d").arg(" ").arg("-f2")
+                    let update_count = { Exec::cmd("eix").arg("-u") }
+                        .capture()
+                        .unwrap()
+                        .stdout_str();
+                    if update_count == "No matches found" {
+                        ()
+                    } else {
+                        total_updates += update_count
+                            .trim_end_matches('\n')
+                            .parse::<i32>()
+                            .unwrap_or(1);
                     }
-                    .capture()
-                    .unwrap()
-                    .stdout_str();
-                    total_updates += update_count
-                        .trim_end_matches('\n')
-                        .parse::<i32>()
-                        .unwrap_or(0);
                 }
                 "apk" => {
                     let update_count =
@@ -133,14 +133,6 @@ fn check_updates() -> i32 {
         }
     };
     total_updates
-}
-
-fn uppercase(s: &str) -> String {
-    let mut c = s.chars();
-    match c.next() {
-        None => String::new(),
-        Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
-    }
 }
 
 fn main() {
@@ -170,6 +162,14 @@ fn main() {
         .expect("Couldn't find 'time_format' attribute.")
         .to_string();
     let dt = Local::now();
+    let day = dt.format("%e").to_string();
+    let date;
+    match day.trim_start_matches(' ').as_ref() {
+        "1" => date = format!("{} {}st", dt.format("%B"), day),
+        "2" => date = format!("{} {}nd", dt.format("%B"), day),
+        "3" => date = format!("{} {}rd", dt.format("%B"), day),
+        _ => date = format!("{} {}th", dt.format("%B"), day),
+    }
     let time = if time_format.trim_matches('\"') == "12h" {
         dt.format("%l:%M %p").to_string()
     } else if time_format.trim_matches('\"') == "24h" {
@@ -202,7 +202,7 @@ fn main() {
             11 | 23 => time_icon = "🕚",
             _ => time_icon = "🕛",
         }
-        println!("{} {}", time_icon, time.trim_start_matches(' '));
+        println!("{} {}, {}", time_icon, date, time.trim_start_matches(' '));
     }
 
     match &weather(
@@ -245,7 +245,7 @@ fn main() {
             println!(
                 "{} {} {}°{}",
                 icon,
-                uppercase(current.weather[0].description.as_ref()),
+                current.weather[0].main,
                 current.main.temp.to_string().substring(0, 2),
                 deg
             )
@@ -254,7 +254,6 @@ fn main() {
     }
 
     let count = check_updates();
-
     match count {
         -1 => (),
         0 => println!("☑️ Up to date"),
