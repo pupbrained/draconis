@@ -75,6 +75,17 @@ fn check_updates() -> i32 {
                         .stdout_str();
                 total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
             }
+            "dnf" => {
+                let update_count = {
+                    Exec::cmd("dnf").arg("check-update")
+                        | Exec::cmd("tail").arg("-n").arg("+3")
+                        | Exec::cmd("wc").arg("-l")
+                }
+                .capture()
+                .unwrap()
+                .stdout_str();
+                total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
+            }
             _ => (),
         }
     } else {
@@ -126,6 +137,17 @@ fn check_updates() -> i32 {
                             .capture()
                             .unwrap()
                             .stdout_str();
+                    total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                }
+                "dnf" => {
+                    let update_count = {
+                        Exec::cmd("dnf").arg("check-update")
+                            | Exec::cmd("tail").arg("-n").arg("+3")
+                            | Exec::cmd("wc").arg("-l")
+                    }
+                    .capture()
+                    .unwrap()
+                    .stdout_str();
                     total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
                 }
                 _ => (),
