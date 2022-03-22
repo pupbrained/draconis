@@ -1,9 +1,11 @@
 {
     "name": "John",
+    "hostname": "john@homepc",
     "time_format": "12h",
     "location": "New York",
     "units": "imperial",
     "lang": "en",
     "api_key": "abc123",
-    "package_managers": ["pacman", "apt"]
+    "package_managers": ["pacman", "apt"],
+    "song": true
 }

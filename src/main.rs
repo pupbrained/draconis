@@ -1,11 +1,12 @@
 use {
-    chrono::prelude::*,
+    std::process::Command,
+    chrono::prelude::{Local, Timelike},
+    colored::*,
     openweathermap::blocking::weather,
     std::{env::var, fs},
-    subprocess::*,
+    subprocess::Exec,
     substring::Substring,
-    curl::*,
-    serde_json::Value
+    unicode_segmentation::UnicodeSegmentation,
 };
 
 fn read_config() -> serde_json::Value {
@@ -60,9 +61,7 @@ fn check_updates() -> i32 {
                     .capture()
                     .unwrap()
                     .stdout_str();
-                if update_count == "No matches found" {
-                    ()
-                } else {
+                if update_count != "No matches found" {
                     total_updates += update_count
                         .trim_end_matches('\n')
                         .parse::<i32>()
@@ -91,72 +90,228 @@ fn check_updates() -> i32 {
             _ => (),
         }
     } else {
-        for i in 0..pm.len() {
-            match pm[i].to_string().trim_matches('\"') {
-                "pacman" => {
-                    let update_count = { Exec::cmd("checkupdates") | Exec::cmd("wc").arg("-l") }
-                        .capture()
-                        .unwrap()
-                        .stdout_str();
-                    total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
-                }
-                "apt" => {
-                    let update_count = {
-                        Exec::cmd("apt-get").arg("upgrade").arg("-s")
-                            | Exec::cmd("grep").arg("-P").arg("^\\d+ upgraded")
-                            | Exec::cmd("cut").arg("-d").arg(" ").arg("-f1")
-                    }
+        (0..pm.len()).for_each(|i| match pm[i].to_string().trim_matches('\"') {
+            "pacman" => {
+                let update_count = { Exec::cmd("checkupdates") | Exec::cmd("wc").arg("-l") }
                     .capture()
                     .unwrap()
                     .stdout_str();
-                    total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
-                }
-                "xbps" => {
-                    let update_count =
-                        { Exec::cmd("xbps-install").arg("-Sun") | Exec::cmd("wc").arg("-l") }
-                            .capture()
-                            .unwrap()
-                            .stdout_str();
-                    total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
-                }
-                "portage" => {
-                    let update_count = { Exec::cmd("eix").arg("-u") }
-                        .capture()
-                        .unwrap()
-                        .stdout_str();
-                    if update_count == "No matches found" {
-                        ()
-                    } else {
-                        total_updates += update_count
-                            .trim_end_matches('\n')
-                            .parse::<i32>()
-                            .unwrap_or(1);
-                    }
-                }
-                "apk" => {
-                    let update_count =
-                        { Exec::cmd("apk").arg("-u").arg("list") | Exec::cmd("wc").arg("-l") }
-                            .capture()
-                            .unwrap()
-                            .stdout_str();
-                    total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
-                }
-                "dnf" => {
-                    let update_count = {
-                        Exec::cmd("dnf").arg("check-update")
-                            | Exec::cmd("tail").arg("-n").arg("+3")
-                            | Exec::cmd("wc").arg("-l")
-                    }
-                    .capture()
-                    .unwrap()
-                    .stdout_str();
-                    total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
-                }
-                _ => (),
+                total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
             }
-        }
+            "apt" => {
+                let update_count = {
+                    Exec::cmd("apt-get").arg("upgrade").arg("-s")
+                        | Exec::cmd("grep").arg("-P").arg("^\\d+ upgraded")
+                        | Exec::cmd("cut").arg("-d").arg(" ").arg("-f1")
+                }
+                .capture()
+                .unwrap()
+                .stdout_str();
+                total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
+            }
+            "xbps" => {
+                let update_count =
+                    { Exec::cmd("xbps-install").arg("-Sun") | Exec::cmd("wc").arg("-l") }
+                        .capture()
+                        .unwrap()
+                        .stdout_str();
+                total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
+            }
+            "portage" => {
+                let update_count = { Exec::cmd("eix").arg("-u") }
+                    .capture()
+                    .unwrap()
+                    .stdout_str();
+                if update_count != "No matches found" {
+                    total_updates += update_count
+                        .trim_end_matches('\n')
+                        .parse::<i32>()
+                        .unwrap_or(1);
+                }
+            }
+            "apk" => {
+                let update_count =
+                    { Exec::cmd("apk").arg("-u").arg("list") | Exec::cmd("wc").arg("-l") }
+                        .capture()
+                        .unwrap()
+                        .stdout_str();
+                total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
+            }
+            "dnf" => {
+                let update_count = {
+                    Exec::cmd("dnf").arg("check-update")
+                        | Exec::cmd("tail").arg("-n").arg("+3")
+                        | Exec::cmd("wc").arg("-l")
+                }
+                .capture()
+                .unwrap()
+                .stdout_str();
+                total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
+            }
+            _ => (),
+        });
     };
     total_updates
+}
+
+fn get_package_count() -> i32 {
+    let mut total_packages = 0;
+
+    let json = read_config();
+
+    if json["package_managers"] == serde_json::json![null] {
+        return -1;
+    }
+
+    let pm = json["package_managers"].as_array().unwrap();
+
+    if pm.len() == 1 {
+        match pm[0].to_string().trim_matches('\"') {
+            "pacman" => {
+                let package_count = { Exec::cmd("pacman").arg("-Q") | Exec::cmd("wc").arg("-l") }
+                    .capture()
+                    .unwrap()
+                    .stdout_str();
+                total_packages += package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+            }
+            "apt" => {
+                let package_count = {
+                    Exec::cmd("dpkg-query").arg("-l")
+                        | Exec::cmd("grep").arg("ii")
+                        | Exec::cmd("wc").arg("-l")
+                }
+                .capture()
+                .unwrap()
+                .stdout_str();
+                total_packages += package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+            }
+            "xbps" => {
+                let package_count =
+                    { Exec::cmd("xbps-query").arg("-l") | Exec::cmd("wc").arg("-l") }
+                        .capture()
+                        .unwrap()
+                        .stdout_str();
+                total_packages += package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+            }
+            "portage" => {
+                let package_count =
+                    { Exec::cmd("eix-installed").arg("-a") | Exec::cmd("wc").arg("-l") }
+                        .capture()
+                        .unwrap()
+                        .stdout_str();
+                total_packages += package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+            }
+            "apk" => {
+                let package_count = { Exec::cmd("apk").arg("info") | Exec::cmd("wc").arg("-l") }
+                    .capture()
+                    .unwrap()
+                    .stdout_str();
+                total_packages += package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+            }
+            "dnf" => {
+                let package_count = {
+                    Exec::cmd("dnf").arg("list").arg("installed")
+                        | Exec::cmd("tail").arg("-n").arg("+2")
+                        | Exec::cmd("wc").arg("-l")
+                }
+                .capture()
+                .unwrap()
+                .stdout_str();
+                total_packages += package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+            }
+            _ => (),
+        }
+    } else {
+        (0..pm.len()).for_each(|i| match pm[i].to_string().trim_matches('\"') {
+            "pacman" => {
+                let package_count = { Exec::cmd("pacman").arg("-Q") | Exec::cmd("wc").arg("-l") }
+                    .capture()
+                    .unwrap()
+                    .stdout_str();
+                total_packages += package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+            }
+            "apt" => {
+                let package_count = {
+                    Exec::cmd("dpkg-query").arg("-l")
+                        | Exec::cmd("grep").arg("ii")
+                        | Exec::cmd("wc").arg("-l")
+                }
+                .capture()
+                .unwrap()
+                .stdout_str();
+                total_packages += package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+            }
+            "xbps" => {
+                let package_count =
+                    { Exec::cmd("xbps-query").arg("-l") | Exec::cmd("wc").arg("-l") }
+                        .capture()
+                        .unwrap()
+                        .stdout_str();
+                total_packages += package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+            }
+            "portage" => {
+                let package_count =
+                    { Exec::cmd("eix-installed").arg("-a") | Exec::cmd("wc").arg("-l") }
+                        .capture()
+                        .unwrap()
+                        .stdout_str();
+                total_packages += package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+            }
+            "apk" => {
+                let package_count = { Exec::cmd("apk").arg("info") | Exec::cmd("wc").arg("-l") }
+                    .capture()
+                    .unwrap()
+                    .stdout_str();
+                total_packages += package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+            }
+            "dnf" => {
+                let package_count = {
+                    Exec::cmd("dnf").arg("list").arg("installed")
+                        | Exec::cmd("tail").arg("-n").arg("+2")
+                        | Exec::cmd("wc").arg("-l")
+                }
+                .capture()
+                .unwrap()
+                .stdout_str();
+                total_packages += package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+            }
+            _ => (),
+        });
+    };
+    total_packages
+}
+
+fn get_song() -> String {
+    let json = read_config();
+    if json["song"] == false {
+        return "none".to_string();
+    }
+    let song = Command::new("playerctl").arg("metadata").arg("-f").arg("{{ artist }} - {{ title }}")
+        .output()
+        .unwrap();
+    let songerr = String::from_utf8_lossy(&song.stderr);
+    let songname = String::from_utf8_lossy(&song.stdout);
+    if songerr != "No players found" {
+        if songname.len() > 26 {
+            format!("{}...", songname.substring(0, 22).to_string())
+        } else {
+            songname.trim_end_matches('\n').to_string()
+        }
+    } else {
+        "No players found".to_string()
+    }
+}
+
+fn calc_whitespace(text: String) -> String {
+    let size = 30 - text.graphemes(false).count();
+    let final_string = format!("{}{}", " ".repeat(size), "│");
+    format!("{}{}", text, final_string)
+}
+
+fn calc_with_hostname(text: String) -> String {
+    let size = 40 - text.graphemes(false).count();
+    let final_string = format!("{}{}", "─".repeat(size), "╮");
+    format!("{}{}", text, final_string)
 }
 
 fn main() {
@@ -164,6 +319,10 @@ fn main() {
     let name = json
         .get("name")
         .expect("Couldn't find 'name' attribute.")
+        .to_string();
+    let hostname = json
+        .get("hostname")
+        .expect("Couldn't find 'hostname' attribute.")
         .to_string();
     let location = json
         .get("location")
@@ -187,13 +346,12 @@ fn main() {
         .to_string();
     let dt = Local::now();
     let day = dt.format("%e").to_string();
-    let date;
-    match day.trim_start_matches(' ').as_ref() {
-        "1" => date = format!("{} {}st", dt.format("%B"), day),
-        "2" => date = format!("{} {}nd", dt.format("%B"), day),
-        "3" => date = format!("{} {}rd", dt.format("%B"), day),
-        _ => date = format!("{} {}th", dt.format("%B"), day),
-    }
+    let date = match day.trim_start_matches(' ') {
+        "1" => format!("{} {}st", dt.format("%B"), day),
+        "2" => format!("{} {}nd", dt.format("%B"), day),
+        "3" => format!("{} {}rd", dt.format("%B"), day),
+        _ => format!("{} {}th", dt.format("%B"), day),
+    };
     let time = if time_format.trim_matches('\"') == "12h" {
         dt.format("%l:%M %p").to_string()
     } else if time_format.trim_matches('\"') == "24h" {
@@ -201,32 +359,59 @@ fn main() {
     } else {
         "off".to_string()
     };
+    let count = check_updates();
+    let song = get_song();
+    let packages = get_package_count();
+
+    println!(
+        "{}",
+        calc_with_hostname(format!("╭─{}", hostname.trim_matches('\"').green()))
+    );
 
     match dt.hour() {
-        6..=11 => println!("🌇 Good morning, {}!", name.trim_matches('\"')),
-        12..=17 => println!("🏙️ Good afternoon, {}!", name.trim_matches('\"')),
-        18..=22 => println!("🌆 Good evening, {}!", name.trim_matches('\"')),
-        _ => println!("🌃 Good night, {}!", name.trim_matches('\"')),
+        6..=11 => println!(
+            "{}",
+            calc_whitespace(format!("│ 🌇 Good morning, {}!", name.trim_matches('\"')))
+        ),
+        12..=17 => println!(
+            "{}",
+            calc_whitespace(format!("│ 🏙️ Good afternoon, {}!", name.trim_matches('\"')))
+        ),
+        18..=22 => println!(
+            "{}",
+            calc_whitespace(format!("│ 🌆 Good evening, {}!", name.trim_matches('\"')))
+        ),
+        _ => println!(
+            "{}",
+            calc_whitespace(format!("│ 🌃 Good night, {}!", name.trim_matches('\"')))
+        ),
     }
 
     if time != "off" {
-        let time_icon;
-        match dt.hour() {
-            0 | 12 => time_icon = "🕛",
-            1 | 13 => time_icon = "🕐",
-            2 | 14 => time_icon = "🕑",
-            3 | 15 => time_icon = "🕒",
-            4 | 16 => time_icon = "🕓",
-            5 | 17 => time_icon = "🕔",
-            6 | 18 => time_icon = "🕕",
-            7 | 19 => time_icon = "🕖",
-            8 | 20 => time_icon = "🕗",
-            9 | 21 => time_icon = "🕘",
-            10 | 22 => time_icon = "🕙",
-            11 | 23 => time_icon = "🕚",
-            _ => time_icon = "🕛",
-        }
-        println!("{} {}, {}", time_icon, date, time.trim_start_matches(' '));
+        let time_icon = match dt.hour() {
+            0 | 12 => "🕛",
+            1 | 13 => "🕐",
+            2 | 14 => "🕑",
+            3 | 15 => "🕒",
+            4 | 16 => "🕓",
+            5 | 17 => "🕔",
+            6 | 18 => "🕕",
+            7 | 19 => "🕖",
+            8 | 20 => "🕗",
+            9 | 21 => "🕘",
+            10 | 22 => "🕙",
+            11 | 23 => "🕚",
+            _ => "🕛",
+        };
+        println!(
+            "{}",
+            calc_whitespace(format!(
+                "│ {} {}, {}",
+                time_icon,
+                date,
+                time.trim_start_matches(' ')
+            ))
+        );
     }
 
     match &weather(
@@ -242,77 +427,70 @@ fn main() {
                 "C"
             };
             let icon_code = &current.weather[0].icon;
-            let icon;
-            match icon_code.as_ref() {
-                "01d" => icon = "☀️",
-                "01n" => icon = "🌙",
-                "02d" => icon = "⛅️",
-                "02n" => icon = "🌙",
-                "03d" => icon = "☁️",
-                "03n" => icon = "☁️",
-                "04d" => icon = "☁️",
-                "04n" => icon = "☁️",
-                "09d" => icon = "🌧️",
-                "09n" => icon = "🌧️",
-                "10d" => icon = "🌧️",
-                "10n" => icon = "🌧️",
-                "11d" => icon = "⛈️",
-                "11n" => icon = "⛈️",
-                "13d" => icon = "🌨️",
-                "13n" => icon = "🌨️",
-                "40d" => icon = "🌫️",
-                "40n" => icon = "🌫️",
-                "50d" => icon = "🌫️",
-                "50n" => icon = "🌫️",
-                _ => icon = "❓",
-            }
+            let icon = match icon_code.as_ref() {
+                "01d" => "☀️",
+                "01n" => "🌙",
+                "02d" => "⛅️",
+                "02n" => "🌙",
+                "03d" => "☁️",
+                "03n" => "☁️",
+                "04d" => "☁️",
+                "04n" => "☁️",
+                "09d" => "🌧️",
+                "09n" => "🌧️",
+                "10d" => "🌧️",
+                "10n" => "🌧️",
+                "11d" => "⛈️",
+                "11n" => "⛈️",
+                "13d" => "🌨️",
+                "13n" => "🌨️",
+                "40d" => "🌫️",
+                "40n" => "🌫️",
+                "50d" => "🌫️",
+                "50n" => "🌫️",
+                _ => "❓",
+            };
             println!(
-                "{} {} {}°{}",
-                icon,
-                current.weather[0].main,
-                current.main.temp.to_string().substring(0, 2),
-                deg
-            )
+                "{}",
+                calc_whitespace(format!(
+                    "│ {} {} {}°{}",
+                    icon,
+                    current.weather[0].main,
+                    current.main.temp.to_string().substring(0, 2),
+                    deg
+                ))
+            );
         }
         Err(e) => panic!("Could not fetch weather because: {}", e),
     }
 
-    let count = check_updates();
     match count {
         -1 => (),
-        0 => println!("☑️ Up to date"),
-        1 => println!("1️⃣ 1 update"),
-        2 => println!("2️⃣ 2 updates"),
-        3 => println!("3️⃣ 3 updates"),
-        4 => println!("4️⃣ 4 updates"),
-        5 => println!("5️⃣ 5 updates"),
-        6 => println!("6️⃣ 6 updates"),
-        7 => println!("7️⃣ 7 updates"),
-        8 => println!("8️⃣ 8 updates"),
-        9 => println!("9️⃣ 9 updates"),
-        10 => println!("🔟 10 updates"),
-        _ => println!("‼️ {} updates", count),
+        0 => println!("{}", calc_whitespace("│ ☑️ Up to date".to_string())),
+        1 => println!("{}", calc_whitespace("│ 1️⃣ 1 update".to_string())),
+        2 => println!("{}", calc_whitespace("│ 2️⃣ 2 updates".to_string())),
+        3 => println!("{}", calc_whitespace("│ 3️⃣ 3 updates".to_string())),
+        4 => println!("{}", calc_whitespace("│ 4️⃣ 4 updates".to_string())),
+        5 => println!("{}", calc_whitespace("│ 5️⃣ 5 updates".to_string())),
+        6 => println!("{}", calc_whitespace("│ 6️⃣ 6 updates".to_string())),
+        7 => println!("{}", calc_whitespace("│ 7️⃣ 7 updates".to_string())),
+        8 => println!("{}", calc_whitespace("│ 8️⃣ 8 updates".to_string())),
+        9 => println!("{}", calc_whitespace("│ 9️⃣ 9 updates".to_string())),
+        10 => println!("{}", calc_whitespace("│ 🔟 10 updates".to_string())),
+        _ => println!("{}", calc_whitespace(format!("│ ‼️ {} updates", count))),
     }
 
-    let url = "https://programming-quotes-api.herokuapp.com/quotes/random";
-    let resp = http::handle()
-        .get(url)
-        .exec()
-        .unwrap_or_else(|e| {
-            panic!("Failed to get {}; error is {}", url, e);
-        });
-    let body = std::str::from_utf8(resp.get_body()).unwrap_or_else(|e| {
-        panic!("Failed to parse response from {}; error is {}", url, e);
-    });
-    let json: Value = serde_json::from_str(body).unwrap_or_else(|e| {
-        panic!("Failed to parse response from {}; error is {}", url, e);
-    });
-    let quote = json["en"].as_str().unwrap_or_else(|| {
-        panic!("Failed to parse response from {}", url);
-    });
-    println!("💭 {}", quote);
+    match packages {
+        -1 => (),
+        0 => println!("{}", calc_whitespace("│ 📦 No packages".to_string())),
+        1 => println!("{}", calc_whitespace("│ 📦 1 package".to_string())),
+        _ => println!("{}", calc_whitespace(format!("│ 📦 {} packages", packages))),
+    }
 
-    println!();
+    match song.as_ref() {
+        "none" => (),
+        _ => println!("{}", calc_whitespace(format!("│ 🎵 {}", song.trim_matches('\n')))),
+    }
 
-    Exec::cmd("neofetch").join().expect("Failed to run fetch!");
+    println!("╰──────────────────────────────╯");
 }

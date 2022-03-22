@@ -1,6 +1,6 @@
 [package]
 name = "hello-rs"
-version = "1.4.0"
+version = "1.5.0"
 edition = "2021"
 
 [dependencies]
@@ -10,3 +10,7 @@ substring = "1.4.5"
 subprocess = "0.1.12"
 chrono = "0.4"
 curl = "0.2.19"
+unicode-segmentation = "1.9.0"
+rand = "0.8.5"
+textwrap = "0.15.0"
+colored = "2"
