@@ -134,7 +134,6 @@ fn check_updates() -> i32 {
                 .capture()
                 .unwrap()
                 .stdout_str();
-                println!("{}", update_count);
                 if update_count != "matches" {
                     total_updates += update_count
                         .trim_end_matches('\n')
