@@ -358,9 +358,9 @@ fn main() {
     let dt = Local::now();
     let day = dt.format("%e").to_string();
     let date = match day.trim_start_matches(' ') {
-        "1" => format!("{} {}st", dt.format("%B"), day),
-        "2" => format!("{} {}nd", dt.format("%B"), day),
-        "3" => format!("{} {}rd", dt.format("%B"), day),
+        "1" | "21" => format!("{} {}st", dt.format("%B"), day),
+        "2" | "22" => format!("{} {}nd", dt.format("%B"), day),
+        "3" | "23" => format!("{} {}rd", dt.format("%B"), day),
         _ => format!("{} {}th", dt.format("%B"), day),
     };
     let time = if time_format.trim_matches('\"') == "12h" {
