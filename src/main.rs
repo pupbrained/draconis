@@ -305,13 +305,13 @@ fn get_song() -> String {
 }
 
 fn calc_whitespace(text: String) -> String {
-    let size = 30 - text.graphemes(false).count();
+    let size = 30 - text.graphemes(true).count();
     let final_string = format!("{}{}", " ".repeat(size), "│");
     format!("{}{}", text, final_string)
 }
 
 fn calc_with_hostname(text: String) -> String {
-    let size = 40 - text.graphemes(false).count();
+    let size = 40 - text.graphemes(true).count();
     let final_string = format!("{}{}", "─".repeat(size), "╮");
     format!("{}{}", text, final_string)
 }
@@ -321,10 +321,6 @@ fn main() {
     let name = json
         .get("name")
         .expect("Couldn't find 'name' attribute.")
-        .to_string();
-    let hostname = json
-        .get("hostname")
-        .expect("Couldn't find 'hostname' attribute.")
         .to_string();
     let location = json
         .get("location")
@@ -364,6 +360,10 @@ fn main() {
     let count = check_updates();
     let song = get_song();
     let packages = get_package_count();
+    let hostname = json
+        .get("hostname")
+        .expect("Couldn't find 'hostname' attribute.")
+        .to_string();
 
     println!(
         "{}",
