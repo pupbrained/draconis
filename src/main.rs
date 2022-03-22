@@ -1,6 +1,5 @@
 use {
     chrono::prelude::{Local, Timelike},
-    colored::*,
     openweathermap::blocking::weather,
     std::{process::Command, env::var, fs},
     subprocess::Exec,
@@ -367,7 +366,7 @@ fn main() {
 
     println!(
         "{}",
-        calc_with_hostname(format!("╭─{}", hostname.trim_matches('\"').green()))
+        calc_with_hostname(format!("╭─\x1b[32m{}\x1b[0m", hostname.trim_matches('\"')))
     );
 
     match dt.hour() {
