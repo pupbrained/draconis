@@ -1,9 +1,8 @@
 use {
-    std::process::Command,
     chrono::prelude::{Local, Timelike},
     colored::*,
     openweathermap::blocking::weather,
-    std::{env::var, fs},
+    std::{process::Command, env::var, fs},
     subprocess::Exec,
     substring::Substring,
     unicode_segmentation::UnicodeSegmentation,
@@ -286,7 +285,10 @@ fn get_song() -> String {
     if json["song"] == false {
         return "none".to_string();
     }
-    let song = Command::new("playerctl").arg("metadata").arg("-f").arg("{{ artist }} - {{ title }}")
+    let song = Command::new("playerctl")
+        .arg("metadata")
+        .arg("-f")
+        .arg("{{ artist }} - {{ title }}")
         .output()
         .unwrap();
     let songerr = String::from_utf8_lossy(&song.stderr);
@@ -489,7 +491,10 @@ fn main() {
 
     match song.as_ref() {
         "none" => (),
-        _ => println!("{}", calc_whitespace(format!("│ 🎵 {}", song.trim_matches('\n')))),
+        _ => println!(
+            "{}",
+            calc_whitespace(format!("│ 🎵 {}", song.trim_matches('\n')))
+        ),
     }
 
     println!("╰──────────────────────────────╯");
