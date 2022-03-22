@@ -1,7 +1,7 @@
 use {
     chrono::prelude::{Local, Timelike},
     openweathermap::blocking::weather,
-    std::{process::Command, env::var, fs},
+    std::{env::var, fs, process::Command},
     subprocess::Exec,
     substring::Substring,
     unicode_segmentation::UnicodeSegmentation,
@@ -55,11 +55,18 @@ fn check_updates() -> i32 {
                 total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
             }
             "portage" => {
-                let update_count = { Exec::cmd("eix").arg("-u") }
-                    .capture()
-                    .unwrap()
-                    .stdout_str();
-                if update_count != "No matches found" {
+                let update_count = {
+                    Exec::cmd("eix")
+                        .arg("-u")
+                        .arg("--format")
+                        .arg("<installedversions:nameversion>")
+                        | Exec::cmd("tail").arg("-1")
+                        | Exec::cmd("cut").arg("-d").arg(" ").arg("-f2")
+                }
+                .capture()
+                .unwrap()
+                .stdout_str();
+                if update_count != "matches" {
                     total_updates += update_count
                         .trim_end_matches('\n')
                         .parse::<i32>()
@@ -116,11 +123,19 @@ fn check_updates() -> i32 {
                 total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
             }
             "portage" => {
-                let update_count = { Exec::cmd("eix").arg("-u") }
-                    .capture()
-                    .unwrap()
-                    .stdout_str();
-                if update_count != "No matches found" {
+                let update_count = {
+                    Exec::cmd("eix")
+                        .arg("-u")
+                        .arg("--format")
+                        .arg("'<installedversions:nameversion>'")
+                        | Exec::cmd("tail").arg("-1")
+                        | Exec::cmd("cut").arg("-d").arg(" ").arg("-f2")
+                }
+                .capture()
+                .unwrap()
+                .stdout_str();
+                println!("{}", update_count);
+                if update_count != "matches" {
                     total_updates += update_count
                         .trim_end_matches('\n')
                         .parse::<i32>()
