@@ -1,7 +1,7 @@
 # hello-rs
 Small terminal welcome program written in rust
 
-![image](https://user-images.githubusercontent.com/33522919/159401366-157bc32d-bf81-4d31-94cd-161abde0c5e5.png)
+![image](https://user-images.githubusercontent.com/33522919/159615234-155825ec-b30e-4986-9e77-3cd224131586.png)
 
 ## Important
 * If you would like to check updates with pacman, you must have `pacman-contrib` installed.
