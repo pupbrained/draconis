@@ -377,12 +377,10 @@ fn main() {
         "3" | "23" => format!("{} {}rd", dt.format("%B"), day),
         _ => format!("{} {}th", dt.format("%B"), day),
     };
-    let time = if time_format.trim_matches('\"') == "12h" {
-        dt.format("%l:%M %p").to_string()
-    } else if time_format.trim_matches('\"') == "24h" {
-        dt.format("%H:%M").to_string()
-    } else {
-        "off".to_string()
+    let time = match time_format.trim_matches('\"') {
+        "12h" => dt.format("%l:%M %p").to_string(),
+        "24h" => dt.format("%H:%M").to_string(),
+        _ => "off".to_string(),
     };
     let count = check_updates();
     let song = get_song();
@@ -391,33 +389,21 @@ fn main() {
         .get("hostname")
         .expect("Couldn't find 'hostname' attribute.")
         .to_string();
-
-    println!(
-        "{}",
-        calc_with_hostname(format!("╭─\x1b[32m{}\x1b[0m", hostname.trim_matches('\"')))
-    );
-
-    match dt.hour() {
-        6..=11 => println!(
-            "{}",
-            calc_whitespace(format!("│ 🌇 Good morning, {}!", name.trim_matches('\"')))
-        ),
-        12..=17 => println!(
-            "{}",
-            calc_whitespace(format!("│ 🏙️ Good afternoon, {}!", name.trim_matches('\"')))
-        ),
-        18..=22 => println!(
-            "{}",
-            calc_whitespace(format!("│ 🌆 Good evening, {}!", name.trim_matches('\"')))
-        ),
-        _ => println!(
-            "{}",
-            calc_whitespace(format!("│ 🌃 Good night, {}!", name.trim_matches('\"')))
-        ),
-    }
+    let greeting = match dt.hour() {
+        6..=11 => "🌇 Good morning",
+        12..=17 => "🏙️ Good afternoon",
+        18..=22 => "🌆 Good evening",
+        _ => "🌃 Good night",
+    };
+    let mut time_icon = "";
+    let deg;
+    let icon_code;
+    let icon;
+    let main;
+    let temp;
 
     if time != "off" {
-        let time_icon = match dt.hour() {
+        time_icon = match dt.hour() {
             0 | 12 => "🕛",
             1 | 13 => "🕐",
             2 | 14 => "🕑",
@@ -432,15 +418,6 @@ fn main() {
             11 | 23 => "🕚",
             _ => "🕛",
         };
-        println!(
-            "{}",
-            calc_whitespace(format!(
-                "│ {} {}, {}",
-                time_icon,
-                date,
-                time.trim_start_matches(' ')
-            ))
-        );
     }
 
     match &weather(
@@ -450,13 +427,13 @@ fn main() {
         api_key.trim_matches('\"'),
     ) {
         Ok(current) => {
-            let deg = if units.trim_matches('\"') == "imperial" {
+            deg = if units.trim_matches('\"') == "imperial" {
                 "F"
             } else {
                 "C"
             };
-            let icon_code = &current.weather[0].icon;
-            let icon = match icon_code.as_ref() {
+            icon_code = &current.weather[0].icon;
+            icon = match icon_code.as_ref() {
                 "01d" => "☀️",
                 "01n" => "🌙",
                 "02d" => "⛅️",
@@ -479,34 +456,59 @@ fn main() {
                 "50n" => "🌫️",
                 _ => "❓",
             };
-            println!(
-                "{}",
-                calc_whitespace(format!(
-                    "│ {} {} {}°{}",
-                    icon,
-                    current.weather[0].main,
-                    current.main.temp.to_string().substring(0, 2),
-                    deg
-                ))
-            );
+            main = current.weather[0].main.to_string();
+            temp = current.main.temp.to_string();
         }
         Err(e) => panic!("Could not fetch weather because: {}", e),
     }
 
-    match count {
-        -1 => (),
-        0 => println!("{}", calc_whitespace("│ ☑️ Up to date".to_string())),
-        1 => println!("{}", calc_whitespace("│ 1️⃣ 1 update".to_string())),
-        2 => println!("{}", calc_whitespace("│ 2️⃣ 2 updates".to_string())),
-        3 => println!("{}", calc_whitespace("│ 3️⃣ 3 updates".to_string())),
-        4 => println!("{}", calc_whitespace("│ 4️⃣ 4 updates".to_string())),
-        5 => println!("{}", calc_whitespace("│ 5️⃣ 5 updates".to_string())),
-        6 => println!("{}", calc_whitespace("│ 6️⃣ 6 updates".to_string())),
-        7 => println!("{}", calc_whitespace("│ 7️⃣ 7 updates".to_string())),
-        8 => println!("{}", calc_whitespace("│ 8️⃣ 8 updates".to_string())),
-        9 => println!("{}", calc_whitespace("│ 9️⃣ 9 updates".to_string())),
-        10 => println!("{}", calc_whitespace("│ 🔟 10 updates".to_string())),
-        _ => println!("{}", calc_whitespace(format!("│ ‼️ {} updates", count))),
+    println!(
+        "{}",
+        calc_with_hostname(format!("╭─\x1b[32m{}\x1b[0m", hostname.trim_matches('\"')))
+    );
+    println!("{}", calc_whitespace(format!("│ {}, {}!", greeting, name.trim_matches('\"'))));
+    if time != "off" {
+        println!(
+            "{}",
+            calc_whitespace(format!(
+                "│ {} {}, {}",
+                time_icon,
+                date,
+                time.trim_start_matches(' ')
+            ))
+        );
+    }
+    println!(
+        "{}",
+        calc_whitespace(format!(
+            "│ {} {} {}°{}",
+            icon,
+            main,
+            temp.substring(0, 2),
+            deg
+        ))
+    );
+
+    let update_count = count.to_string();
+
+    let updates: String = match count {
+        -1 => "none".to_string(),
+        0 => "☑️ Up to date".to_string(),
+        1 => "1️⃣ 1 update".to_string(),
+        2 => "2️⃣ 2 updates".to_string(),
+        3 => "3️⃣ 3 updates".to_string(),
+        4 => "4️⃣ 4 updates".to_string(),
+        5 => "5️⃣ 5 updates".to_string(),
+        6 => "6️⃣ 6 updates".to_string(),
+        7 => "7️⃣ 7 updates".to_string(),
+        8 => "8️⃣ 8 updates".to_string(),
+        9 => "9️⃣ 9 updates".to_string(),
+        10 => "🔟 10 updates".to_string(),
+        _ => format!("│ ‼️ {} updates", update_count)
+    };
+
+    if updates != "none" {
+        println!("{}", calc_whitespace(format!("│ {}", updates)));
     }
 
     match packages {
