@@ -1,14 +1,14 @@
 use {
     chrono::prelude::{Local, Timelike},
     openweathermap::blocking::weather,
-    std::{env::var, fs, process::Command},
+    std::{env, fs, process},
     subprocess::Exec,
     substring::Substring,
     unicode_segmentation::UnicodeSegmentation,
 };
 
 fn read_config() -> serde_json::Value {
-    let path = format!("{}/.config/hello-rs/config.json", var("HOME").unwrap());
+    let path = format!("{}/.config/hello-rs/config.json", env::var("HOME").unwrap());
     let file = fs::File::open(path).expect("Failed to open config file.");
     let json: serde_json::Value =
         serde_json::from_reader(file).expect("Failed to parse config file as a JSON.");
@@ -134,7 +134,7 @@ fn check_updates() -> i32 {
                 .capture()
                 .unwrap()
                 .stdout_str();
-                if update_count != "matches" {
+                if update_count.trim_end_matches('\n') != "matches" {
                     total_updates += update_count
                         .trim_end_matches('\n')
                         .parse::<i32>()
@@ -296,9 +296,9 @@ fn get_package_count() -> i32 {
 fn get_song() -> String {
     let json = read_config();
     if json["song"] == false {
-        return "none".to_string();
+        return "".to_string();
     }
-    let song = Command::new("playerctl")
+    let song = process::Command::new("playerctl")
         .arg("metadata")
         .arg("-f")
         .arg("{{ artist }} - {{ title }}")
@@ -313,7 +313,7 @@ fn get_song() -> String {
             songname.trim_end_matches('\n').to_string()
         }
     } else {
-        "No players found".to_string()
+        "".to_string()
     }
 }
 
@@ -329,7 +329,21 @@ fn calc_with_hostname(text: String) -> String {
     format!("{}{}", text, final_string)
 }
 
+fn parse_args() {
+    let args: Vec<String> = env::args().collect();
+    for i in 0..args.len() {
+        match args[i].as_ref() {
+            "-h" | "--help" => {
+                println!("TODO");
+                process::exit(0);
+            }
+            _ => (),
+        }
+    }
+}
+
 fn main() {
+    parse_args();
     let json = read_config();
     let name = json
         .get("name")
@@ -503,7 +517,7 @@ fn main() {
     }
 
     match song.as_ref() {
-        "none" => (),
+        "" => (),
         _ => println!(
             "{}",
             calc_whitespace(format!("│ 🎵 {}", song.trim_matches('\n')))
