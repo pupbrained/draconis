@@ -318,16 +318,29 @@ fn get_song() -> String {
     }
 }
 
+fn upper_first(s: String) -> String {
+    let mut c = s.chars();
+    match c.next() {
+        None => String::new(),
+        Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+    }
+}
+
 fn calc_whitespace(text: String) -> String {
-    let size = 30 - text.graphemes(true).count();
+    let size = 36 - text.graphemes(true).count();
     let final_string = format!("{}{}", " ".repeat(size), "│");
     format!("{}{}", text, final_string)
 }
 
 fn calc_with_hostname(text: String) -> String {
-    let size = 40 - text.graphemes(true).count();
+    let size = 46 - text.graphemes(true).count();
     let final_string = format!("{}{}", "─".repeat(size), "╮");
     format!("{}{}", text, final_string)
+}
+
+fn get_environment() -> String {
+    let env = env::var::<String>("XDG_SESSION_DESKTOP".to_string()).unwrap_or("".to_string());
+    env
 }
 
 fn parse_args() {
@@ -491,6 +504,11 @@ fn main() {
     );
 
     println!("{}", calc_whitespace(format!("│ 🫀 {} {}", uname().sysname(), uname().release())));
+    
+    match get_environment().as_ref() {
+        "" => (),
+        _ => println!("{}", calc_whitespace(format!("│ 🖥️ {}", upper_first(get_environment()))))
+    }
 
     let update_count = count.to_string();
 
@@ -529,5 +547,5 @@ fn main() {
         ),
     }
 
-    println!("╰──────────────────────────────╯");
+    println!("╰────────────────────────────────────╯");
 }
