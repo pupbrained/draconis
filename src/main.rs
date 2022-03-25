@@ -5,6 +5,7 @@ use {
     subprocess::Exec,
     substring::Substring,
     unicode_segmentation::UnicodeSegmentation,
+    nix::sys::utsname::uname,
 };
 
 fn read_config() -> serde_json::Value {
@@ -489,6 +490,8 @@ fn main() {
         ))
     );
 
+    println!("{}", calc_whitespace(format!("│ 🫀 {} {}", uname().sysname(), uname().release())));
+
     let update_count = count.to_string();
 
     let updates: String = match count {
@@ -504,7 +507,7 @@ fn main() {
         8 => "8️⃣ 8 updates".to_string(),
         9 => "9️⃣ 9 updates".to_string(),
         10 => "🔟 10 updates".to_string(),
-        _ => format!("│ ‼️ {} updates", update_count)
+        _ => format!("‼️ {} updates", update_count)
     };
 
     if updates != "none" {
