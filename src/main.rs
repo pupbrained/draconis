@@ -308,8 +308,8 @@ fn get_song() -> String {
     let songerr = String::from_utf8_lossy(&song.stderr);
     let songname = String::from_utf8_lossy(&song.stdout);
     if songerr != "No players found" {
-        if songname.len() > 26 {
-            format!("{}...", songname.substring(0, 22).to_string())
+        if songname.len() > 32 {
+            format!("{}...", songname.substring(0, 28).to_string())
         } else {
             songname.trim_end_matches('\n').to_string()
         }
