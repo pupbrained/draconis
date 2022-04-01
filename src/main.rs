@@ -5,15 +5,31 @@ use {
     subprocess::Exec,
     substring::Substring,
     unicode_segmentation::UnicodeSegmentation,
-    nix::sys::utsname::uname,
 };
 
 fn read_config() -> serde_json::Value {
-    let path = format!("{}/.config/hello-rs/config.json", env::var("HOME").unwrap());
+    let args: Vec<String> = env::args().collect();
+    let mut path = format!("{}/.config/hello-rs/config.json", env::var("HOME").unwrap());
+    for i in 0..args.len() {
+        match args[i].as_ref() {
+            "-c" | "--config" => {
+                path = (&args[i + 1].as_str()).parse().unwrap();
+            }
+            _ => (),
+        }
+    }
     let file = fs::File::open(path).expect("Failed to open config file.");
     let json: serde_json::Value =
         serde_json::from_reader(file).expect("Failed to parse config file as a JSON.");
     json
+}
+
+fn get_kernel() -> String {
+    let uname = { Exec::cmd("uname").arg("-sr") }
+        .capture()
+        .unwrap()
+        .stdout_str();
+    uname.trim_end_matches("\n").to_string()
 }
 
 fn check_updates() -> i32 {
@@ -38,9 +54,9 @@ fn check_updates() -> i32 {
             }
             "apt" => {
                 let update_count = {
-                    Exec::cmd("apt-get").arg("upgrade").arg("-s")
-                        | Exec::cmd("grep").arg("-P").arg("^\\d+ upgraded")
-                        | Exec::cmd("cut").arg("-d").arg(" ").arg("-f1")
+                    Exec::cmd("apt").arg("list").arg("-u")
+                        | Exec::cmd("tail").arg("-n").arg("+2")
+                        | Exec::cmd("wc").arg("-l")
                 }
                 .capture()
                 .unwrap()
@@ -106,13 +122,13 @@ fn check_updates() -> i32 {
             }
             "apt" => {
                 let update_count = {
-                    Exec::cmd("apt-get").arg("upgrade").arg("-s")
-                        | Exec::cmd("grep").arg("-P").arg("^\\d+ upgraded")
-                        | Exec::cmd("cut").arg("-d").arg(" ").arg("-f1")
+                    Exec::cmd("apt").arg("list").arg("-u")
+                        | Exec::cmd("tail").arg("-n").arg("+2")
+                        | Exec::cmd("wc").arg("-l")
                 }
-                .capture()
-                .unwrap()
-                .stdout_str();
+                    .capture()
+                    .unwrap()
+                    .stdout_str();
                 total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
             }
             "xbps" => {
@@ -503,7 +519,7 @@ fn main() {
         ))
     );
 
-    println!("{}", calc_whitespace(format!("│ 🫀 {} {}", uname().sysname(), uname().release())));
+    println!("{}", calc_whitespace(format!("│ 🫀 {}", get_kernel())));
     
     match get_environment().as_ref() {
         "" => (),
