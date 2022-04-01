@@ -29,7 +29,11 @@ fn get_kernel() -> String {
         .capture()
         .unwrap()
         .stdout_str();
-    uname.trim_end_matches("\n").to_string()
+    if uname.len() > 32 {
+        format!("{}...", uname.substring(0, 28).to_string())
+    } else {
+        uname.trim_end_matches('\n').to_string()
+    }
 }
 
 fn check_updates() -> i32 {
@@ -126,9 +130,9 @@ fn check_updates() -> i32 {
                         | Exec::cmd("tail").arg("-n").arg("+2")
                         | Exec::cmd("wc").arg("-l")
                 }
-                    .capture()
-                    .unwrap()
-                    .stdout_str();
+                .capture()
+                .unwrap()
+                .stdout_str();
                 total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
             }
             "xbps" => {
@@ -496,7 +500,10 @@ fn main() {
         "{}",
         calc_with_hostname(format!("╭─\x1b[32m{}\x1b[0m", hostname.trim_matches('\"')))
     );
-    println!("{}", calc_whitespace(format!("│ {}, {}!", greeting, name.trim_matches('\"'))));
+    println!(
+        "{}",
+        calc_whitespace(format!("│ {}, {}!", greeting, name.trim_matches('\"')))
+    );
     if time != "off" {
         println!(
             "{}",
@@ -520,10 +527,12 @@ fn main() {
     );
 
     println!("{}", calc_whitespace(format!("│ 🫀 {}", get_kernel())));
-    
     match get_environment().as_ref() {
         "" => (),
-        _ => println!("{}", calc_whitespace(format!("│ 🖥️ {}", upper_first(get_environment()))))
+        _ => println!(
+            "{}",
+            calc_whitespace(format!("│ 🖥️ {}", upper_first(get_environment())))
+        ),
     }
 
     let update_count = count.to_string();
@@ -541,7 +550,7 @@ fn main() {
         8 => "8️⃣ 8 updates".to_string(),
         9 => "9️⃣ 9 updates".to_string(),
         10 => "🔟 10 updates".to_string(),
-        _ => format!("‼️ {} updates", update_count)
+        _ => format!("‼️ {} updates", update_count),
     };
 
     if updates != "none" {
