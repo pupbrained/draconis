@@ -7,6 +7,24 @@ use {
     unicode_segmentation::UnicodeSegmentation,
 };
 
+fn parse_args() {
+    let args: Vec<String> = env::args().collect();
+    for i in 0..args.len() {
+        match args[i].as_ref() {
+            "-h" | "--help" => {
+                println!("Usage:");
+                println!("\t{} [OPTION]", args[0]);
+                println!();
+                println!("Help Options:");
+                println!("\t-h, --help\t\tShow this message");
+                println!("\t-c, --config\t\tSpecify a path to a config file");
+                process::exit(0);
+            }
+            _ => (),
+        }
+    }
+}
+
 fn read_config() -> serde_json::Value {
     let args: Vec<String> = env::args().collect();
     let mut path = format!("{}/.config/hello-rs/config.json", env::var("HOME").unwrap());
@@ -54,7 +72,7 @@ fn check_updates() -> i32 {
                     .capture()
                     .unwrap()
                     .stdout_str();
-                total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                total_updates = update_count.trim_end_matches('\n').parse::<i32>().unwrap();
             }
             "apt" => {
                 let update_count = {
@@ -65,7 +83,7 @@ fn check_updates() -> i32 {
                 .capture()
                 .unwrap()
                 .stdout_str();
-                total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                total_updates = update_count.trim_end_matches('\n').parse::<i32>().unwrap();
             }
             "xbps" => {
                 let update_count =
@@ -73,7 +91,7 @@ fn check_updates() -> i32 {
                         .capture()
                         .unwrap()
                         .stdout_str();
-                total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                total_updates = update_count.trim_end_matches('\n').parse::<i32>().unwrap();
             }
             "portage" => {
                 let update_count = {
@@ -88,7 +106,7 @@ fn check_updates() -> i32 {
                 .unwrap()
                 .stdout_str();
                 if update_count != "matches" {
-                    total_updates += update_count
+                    total_updates = update_count
                         .trim_end_matches('\n')
                         .parse::<i32>()
                         .unwrap_or(1);
@@ -100,7 +118,7 @@ fn check_updates() -> i32 {
                         .capture()
                         .unwrap()
                         .stdout_str();
-                total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                total_updates = update_count.trim_end_matches('\n').parse::<i32>().unwrap();
             }
             "dnf" => {
                 let update_count = {
@@ -111,7 +129,7 @@ fn check_updates() -> i32 {
                 .capture()
                 .unwrap()
                 .stdout_str();
-                total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                total_updates = update_count.trim_end_matches('\n').parse::<i32>().unwrap();
             }
             _ => (),
         }
@@ -205,7 +223,7 @@ fn get_package_count() -> i32 {
                     .capture()
                     .unwrap()
                     .stdout_str();
-                total_packages += package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                total_packages = package_count.trim_end_matches('\n').parse::<i32>().unwrap();
             }
             "apt" => {
                 let package_count = {
@@ -216,7 +234,7 @@ fn get_package_count() -> i32 {
                 .capture()
                 .unwrap()
                 .stdout_str();
-                total_packages += package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                total_packages = package_count.trim_end_matches('\n').parse::<i32>().unwrap();
             }
             "xbps" => {
                 let package_count =
@@ -224,7 +242,7 @@ fn get_package_count() -> i32 {
                         .capture()
                         .unwrap()
                         .stdout_str();
-                total_packages += package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                total_packages = package_count.trim_end_matches('\n').parse::<i32>().unwrap();
             }
             "portage" => {
                 let package_count =
@@ -232,14 +250,14 @@ fn get_package_count() -> i32 {
                         .capture()
                         .unwrap()
                         .stdout_str();
-                total_packages += package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                total_packages = package_count.trim_end_matches('\n').parse::<i32>().unwrap();
             }
             "apk" => {
                 let package_count = { Exec::cmd("apk").arg("info") | Exec::cmd("wc").arg("-l") }
                     .capture()
                     .unwrap()
                     .stdout_str();
-                total_packages += package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                total_packages = package_count.trim_end_matches('\n').parse::<i32>().unwrap();
             }
             "dnf" => {
                 let package_count = {
@@ -250,7 +268,7 @@ fn get_package_count() -> i32 {
                 .capture()
                 .unwrap()
                 .stdout_str();
-                total_packages += package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                total_packages = package_count.trim_end_matches('\n').parse::<i32>().unwrap();
             }
             _ => (),
         }
@@ -363,19 +381,6 @@ fn get_environment() -> String {
     env
 }
 
-fn parse_args() {
-    let args: Vec<String> = env::args().collect();
-    for i in 0..args.len() {
-        match args[i].as_ref() {
-            "-h" | "--help" => {
-                println!("TODO");
-                process::exit(0);
-            }
-            _ => (),
-        }
-    }
-}
-
 fn main() {
     parse_args();
     let json = read_config();
@@ -406,9 +411,9 @@ fn main() {
     let dt = Local::now();
     let day = dt.format("%e").to_string();
     let date = match day.trim_start_matches(' ') {
-        "1" | "21" => format!("{} {}st", dt.format("%B"), day),
-        "2" | "22" => format!("{} {}nd", dt.format("%B"), day),
-        "3" | "23" => format!("{} {}rd", dt.format("%B"), day),
+        "1" | "21" | "31 "=> format!("{} {}st", dt.format("%B"), day.trim_start_matches(' ')),
+        "2" | "22" => format!("{} {}nd", dt.format("%B"), day.trim_start_matches(' ')),
+        "3" | "23" => format!("{} {}rd", dt.format("%B"), day.trim_start_matches(' ')),
         _ => format!("{} {}th", dt.format("%B"), day),
     };
     let time = match time_format.trim_matches('\"') {
