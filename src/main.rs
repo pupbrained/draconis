@@ -414,7 +414,7 @@ fn main() {
         "1" | "21" | "31 "=> format!("{} {}st", dt.format("%B"), day.trim_start_matches(' ')),
         "2" | "22" => format!("{} {}nd", dt.format("%B"), day.trim_start_matches(' ')),
         "3" | "23" => format!("{} {}rd", dt.format("%B"), day.trim_start_matches(' ')),
-        _ => format!("{} {}th", dt.format("%B"), day),
+        _ => format!("{} {}th", dt.format("%B"), day.trim_start_matches(' ')),
     };
     let time = match time_format.trim_matches('\"') {
         "12h" => dt.format("%l:%M %p").to_string(),
