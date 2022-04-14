@@ -1,12 +1,12 @@
 [package]
 name = "hello-rs"
-version = "1.7.1"
+version = "1.8.0"
 edition = "2021"
 
 [dependencies]
 serde_json = "1.0"
-openweathermap = "0.2.4"
-substring = "1.4.5"
-subprocess = "0.1.12"
+openweathermap = "0.2"
+substring = "1.4"
+subprocess = "0.2"
 chrono = "0.4"
-unicode-segmentation = "1.9.0"
+unicode-segmentation = "1.9"
