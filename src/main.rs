@@ -42,8 +42,20 @@ fn read_config() -> serde_json::Value {
     json
 }
 
+fn get_release() -> String {
+    let rel = Exec::cmd("lsb_release").arg("-sd")
+        .capture()
+        .unwrap()
+        .stdout_str();
+    if rel.len() > 32 {
+        format!("{}...", rel.trim_matches('\"').substring(0, 28))
+    } else {
+        rel.trim_matches('\"').trim_end_matches('\n').trim_end_matches('\"').to_string()
+    }
+}
+
 fn get_kernel() -> String {
-    let uname = { Exec::cmd("uname").arg("-sr") }
+    let uname = Exec::cmd("uname").arg("-sr")
         .capture()
         .unwrap()
         .stdout_str();
@@ -532,6 +544,7 @@ fn main() {
         ))
     );
 
+    println!("{}", calc_whitespace(format!("│ 💻 {}", get_release())));
     println!("{}", calc_whitespace(format!("│ 🫀 {}", get_kernel())));
     match get_environment().as_ref() {
         "" => (),
