@@ -1,7 +1,7 @@
 [package]
 edition = "2021"
 name = "hello-rs"
-version = "1.9.0"
+version = "2.0.0"
 
 [dependencies]
 argparse = "0.2.2"
@@ -12,3 +12,4 @@ subprocess = "0.2"
 substring = "1.4"
 unicode-segmentation = "1.9"
 systemstat = "0.1.10"
+tokio = { version = "1", features = ["full"] }

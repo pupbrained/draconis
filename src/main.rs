@@ -1,5 +1,3 @@
-use systemstat::{System, Platform, saturating_sub_bytes};
-
 use {
     argparse::{ArgumentParser, Store},
     chrono::prelude::{Local, Timelike},
@@ -7,6 +5,8 @@ use {
     std::{env, fs, process},
     subprocess::Exec,
     substring::Substring,
+    systemstat::{saturating_sub_bytes, Platform, System},
+    tokio::task::spawn_blocking,
     unicode_segmentation::UnicodeSegmentation,
 };
 
@@ -47,8 +47,8 @@ fn check_updates() -> i32 {
             }
             "apt" => {
                 let update_count = {
-                    Exec::cmd("apt").arg("list").arg("-u")
-                        | Exec::cmd("tail").arg("-n").arg("+2")
+                    Exec::cmd("apt").args(&["list", "-u"])
+                        | Exec::cmd("tail").args(&["-n", "+2"])
                         | Exec::cmd("wc").arg("-l")
                 }
                 .capture()
@@ -66,12 +66,9 @@ fn check_updates() -> i32 {
             }
             "portage" => {
                 let update_count = {
-                    Exec::cmd("eix")
-                        .arg("-u")
-                        .arg("--format")
-                        .arg("'<installedversions:nameversion>'")
+                    Exec::cmd("eix").args(&["-u", "--format", "'<installedversions:nameversion>'"])
                         | Exec::cmd("tail").arg("-1")
-                        | Exec::cmd("cut").arg("-d").arg(" ").arg("-f2")
+                        | Exec::cmd("cut").args(&["-d", " ", "-f2"])
                 }
                 .capture()
                 .unwrap()
@@ -85,7 +82,7 @@ fn check_updates() -> i32 {
             }
             "apk" => {
                 let update_count =
-                    { Exec::cmd("apk").arg("-u").arg("list") | Exec::cmd("wc").arg("-l") }
+                    { Exec::cmd("apk").args(&["-u", "list"]) | Exec::cmd("wc").arg("-l") }
                         .capture()
                         .unwrap()
                         .stdout_str();
@@ -94,7 +91,7 @@ fn check_updates() -> i32 {
             "dnf" => {
                 let update_count = {
                     Exec::cmd("dnf").arg("check-update")
-                        | Exec::cmd("tail").arg("-n").arg("+3")
+                        | Exec::cmd("tail").args(&["-n", "+3"])
                         | Exec::cmd("wc").arg("-l")
                 }
                 .capture()
@@ -116,8 +113,8 @@ fn check_updates() -> i32 {
             }
             "apt" => {
                 let update_count = {
-                    Exec::cmd("apt").arg("list").arg("-u")
-                        | Exec::cmd("tail").arg("-n").arg("+2")
+                    Exec::cmd("apt").args(&["list", "-u"])
+                        | Exec::cmd("tail").args(&["-n", "+2"])
                         | Exec::cmd("wc").arg("-l")
                 }
                 .capture()
@@ -135,12 +132,9 @@ fn check_updates() -> i32 {
             }
             "portage" => {
                 let update_count = {
-                    Exec::cmd("eix")
-                        .arg("-u")
-                        .arg("--format")
-                        .arg("<installedversions:nameversion>")
+                    Exec::cmd("eix").args(&["-u", "--format", "'<installedversions:nameversion>'"])
                         | Exec::cmd("tail").arg("-1")
-                        | Exec::cmd("cut").arg("-d").arg(" ").arg("-f2")
+                        | Exec::cmd("cut").args(&["-d", " ", "-f2"])
                 }
                 .capture()
                 .unwrap()
@@ -154,7 +148,7 @@ fn check_updates() -> i32 {
             }
             "apk" => {
                 let update_count =
-                    { Exec::cmd("apk").arg("-u").arg("list") | Exec::cmd("wc").arg("-l") }
+                    { Exec::cmd("apk").args(&["-u", "list"]) | Exec::cmd("wc").arg("-l") }
                         .capture()
                         .unwrap()
                         .stdout_str();
@@ -163,7 +157,7 @@ fn check_updates() -> i32 {
             "dnf" => {
                 let update_count = {
                     Exec::cmd("dnf").arg("check-update")
-                        | Exec::cmd("tail").arg("-n").arg("+3")
+                        | Exec::cmd("tail").args(&["-n", "+3"])
                         | Exec::cmd("wc").arg("-l")
                 }
                 .capture()
@@ -233,8 +227,8 @@ fn get_package_count() -> i32 {
             }
             "dnf" => {
                 let package_count = {
-                    Exec::cmd("dnf").arg("list").arg("installed")
-                        | Exec::cmd("tail").arg("-n").arg("+2")
+                    Exec::cmd("dnf").args(&["list", "installed"])
+                        | Exec::cmd("tail").args(&["-n", "+2"])
                         | Exec::cmd("wc").arg("-l")
                 }
                 .capture()
@@ -290,8 +284,8 @@ fn get_package_count() -> i32 {
             }
             "dnf" => {
                 let package_count = {
-                    Exec::cmd("dnf").arg("list").arg("installed")
-                        | Exec::cmd("tail").arg("-n").arg("+2")
+                    Exec::cmd("dnf").args(&["list", "installed"])
+                        | Exec::cmd("tail").args(&["-n", "+2"])
                         | Exec::cmd("wc").arg("-l")
                 }
                 .capture()
@@ -308,8 +302,7 @@ fn get_package_count() -> i32 {
 
 fn get_release() -> String {
     let rel = Exec::cmd("lsb_release")
-        .arg("-s")
-        .arg("-d")
+        .args(&["-s", "-d"])
         .capture()
         .unwrap()
         .stdout_str();
@@ -382,7 +375,7 @@ fn calc_with_hostname(text: String) -> String {
 
 fn get_environment() -> String {
     env::var::<String>(ToString::to_string(&"XDG_CURRENT_DESKTOP"))
-        .unwrap_or_else(|_| "".to_string())
+        .unwrap_or(env::var(&"XDG_SESSION_DESKTOP").unwrap_or("".to_string()))
 }
 
 fn get_weather() -> String {
@@ -543,21 +536,22 @@ fn count_updates() -> String {
 }
 
 fn get_cpu() -> String {
-    let sys = System::new();
-    match sys.load_average() {
-        Ok(loadavg) => {
-            format!("{}% Used", (loadavg.one * 10.0) as u32)
-        }
-        Err(x) => panic!("Could not get CPU load: {}", x),
+    let cpu_usage = {
+        Exec::cmd("iostat")
+            | Exec::cmd("head").args(&["-n", "5"])
+            | Exec::cmd("tail").args(&["-n", "2"])
+            | Exec::cmd("cut").args(&["-d", " ", "-f11"])
     }
+    .capture()
+    .unwrap()
+    .stdout_str();
+    cpu_usage.trim_end_matches('\n').substring(0, 4).to_owned() + "% Used"
 }
 
 fn get_memory() -> String {
     let sys = System::new();
     match sys.memory() {
-        Ok(mem) => {
-            format!("{} Used", saturating_sub_bytes(mem.total, mem.free)).to_string()
-        }
+        Ok(mem) => format!("{} Used", saturating_sub_bytes(mem.total, mem.free)).to_string(),
         Err(x) => panic!("Could not get memory because: {}", x),
     }
 }
@@ -572,47 +566,63 @@ fn get_disk_usage() -> String {
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
+    let hostname = spawn_blocking(|| get_hostname()).await.unwrap();
+    let greeting = spawn_blocking(|| greeting()).await.unwrap();
+    let datetime = spawn_blocking(|| get_datetime()).await.unwrap();
+    let weather = spawn_blocking(|| get_weather()).await.unwrap();
+    let release = spawn_blocking(|| get_release()).await.unwrap();
+    let kernel = spawn_blocking(|| get_kernel()).await.unwrap();
+    let cpu = spawn_blocking(|| get_cpu()).await.unwrap();
+    let memory = spawn_blocking(|| get_memory()).await.unwrap();
+    let disk = spawn_blocking(|| get_disk_usage()).await.unwrap();
+    let environment = spawn_blocking(|| get_environment()).await.unwrap();
+    let up_count = spawn_blocking(|| count_updates()).await.unwrap();
+    let package_count = spawn_blocking(|| get_package_count()).await.unwrap();
+    let song = spawn_blocking(|| get_song()).await.unwrap();
+
     println!(
         "{}",
-        calc_with_hostname(format!("╭─\x1b[32m{}\x1b[0m", get_hostname()))
+        calc_with_hostname(format!("╭─\x1b[32m{}\x1b[0m", hostname))
     );
-    println!("{}", calc_whitespace(format!("│ {}!", greeting())));
-    println!("{}", calc_whitespace(get_datetime()));
-    println!("{}", calc_whitespace(get_weather()));
-    println!("{}", calc_whitespace(format!("│ 💻 {}", get_release())));
-    println!("{}", calc_whitespace(format!("│ 🫀 {}", get_kernel())));
-    println!("{}", calc_whitespace(format!("│ 🔌 {}", get_cpu())));
-    println!("{}", calc_whitespace(format!("│ 🧠 {}", get_memory())));
-    println!("{}", calc_whitespace(format!("│ 💾 {}", get_disk_usage())));
 
-    match get_environment().as_ref() {
+    println!("{}", calc_whitespace(format!("│ {}!", greeting)));
+    println!("{}", calc_whitespace(datetime));
+    println!("{}", calc_whitespace(weather));
+    println!("{}", calc_whitespace(format!("│ 💻 {}", release)));
+    println!("{}", calc_whitespace(format!("│ 🫀 {}", kernel)));
+    println!("{}", calc_whitespace(format!("│ 🔌 {}", cpu)));
+    println!("{}", calc_whitespace(format!("│ 🧠 {}", memory)));
+    println!("{}", calc_whitespace(format!("│ 💾 {}", disk)));
+
+    match environment.as_ref() {
         "" => (),
         _ => println!(
             "{}",
-            calc_whitespace(format!("│ 🖥️ {}", upper_first(get_environment())))
+            calc_whitespace(format!("│ 🖥️ {}", upper_first(environment)))
         ),
     }
 
-    if count_updates() != "│ none".to_string() {
-        println!("{}", calc_whitespace(count_updates()));
+    if up_count != "│ none".to_string() {
+        println!("{}", calc_whitespace(up_count));
     }
 
-    match get_package_count() {
+    match package_count {
         -1 => (),
         0 => println!("{}", calc_whitespace("│ 📦 No packages".to_string())),
         1 => println!("{}", calc_whitespace("│ 📦 1 package".to_string())),
         _ => println!(
             "{}",
-            calc_whitespace(format!("│ 📦 {} packages", get_package_count()))
+            calc_whitespace(format!("│ 📦 {} packages", package_count))
         ),
     }
 
-    match get_song().as_ref() {
+    match song.as_ref() {
         "" => (),
         _ => println!(
             "{}",
-            calc_whitespace(format!("│ 🎵 {}", get_song().trim_matches('\n')))
+            calc_whitespace(format!("│ 🎵 {}", song.trim_matches('\n')))
         ),
     }
 
