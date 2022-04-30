@@ -37,98 +37,119 @@ fn check_updates() -> i32 {
 
     if json["package_managers"].is_array() {
         let pm = json["package_managers"].as_array().unwrap();
-        (0..pm.len()).for_each(|i| match pm[i].to_string().trim_matches('\"') {
-            "pacman" => {
-                let update_count = { Exec::cmd("checkupdates") | Exec::cmd("wc").arg("-l") }
+        for i in 0..pm.len() {
+            match pm[i].to_string().trim_matches('\"') {
+                "pacman" => {
+                    total_updates += { Exec::cmd("checkupdates") | Exec::cmd("wc").arg("-l") }
+                        .capture()
+                        .unwrap()
+                        .stdout_str()
+                        .trim_end_matches('\n')
+                        .parse::<i32>()
+                        .unwrap();
+                }
+                "apt" => {
+                    total_updates += {
+                        Exec::cmd("apt").args(&["list", "-u"])
+                            | Exec::cmd("tail").args(&["-n", "+2"])
+                            | Exec::cmd("wc").arg("-l")
+                    }
+                    .capture()
+                    .unwrap()
+                    .stdout_str()
+                    .trim_end_matches('\n')
+                    .parse::<i32>()
+                    .unwrap();
+                }
+                "xbps" => {
+                    total_updates +=
+                        { Exec::cmd("xbps-install").arg("-Sun") | Exec::cmd("wc").arg("-l") }
+                            .capture()
+                            .unwrap()
+                            .stdout_str()
+                            .trim_end_matches('\n')
+                            .parse::<i32>()
+                            .unwrap();
+                }
+                "portage" => {
+                    let update_count = {
+                        Exec::cmd("eix").args(&[
+                            "-u",
+                            "--format",
+                            "'<installedversions:nameversion>'",
+                        ]) | Exec::cmd("tail").arg("-1")
+                            | Exec::cmd("cut").args(&["-d", " ", "-f2"])
+                    }
                     .capture()
                     .unwrap()
                     .stdout_str();
-                total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
-            }
-            "apt" => {
-                let update_count = {
-                    Exec::cmd("apt").args(&["list", "-u"])
-                        | Exec::cmd("tail").args(&["-n", "+2"])
-                        | Exec::cmd("wc").arg("-l")
+                    if update_count.trim_end_matches('\n') != "matches" {
+                        total_updates += update_count
+                            .trim_end_matches('\n')
+                            .parse::<i32>()
+                            .unwrap_or(1);
+                    }
                 }
-                .capture()
-                .unwrap()
-                .stdout_str();
-                total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
-            }
-            "xbps" => {
-                let update_count =
-                    { Exec::cmd("xbps-install").arg("-Sun") | Exec::cmd("wc").arg("-l") }
-                        .capture()
-                        .unwrap()
-                        .stdout_str();
-                total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
-            }
-            "portage" => {
-                let update_count = {
-                    Exec::cmd("eix").args(&["-u", "--format", "'<installedversions:nameversion>'"])
-                        | Exec::cmd("tail").arg("-1")
-                        | Exec::cmd("cut").args(&["-d", " ", "-f2"])
+                "apk" => {
+                    total_updates +=
+                        { Exec::cmd("apk").args(&["-u", "list"]) | Exec::cmd("wc").arg("-l") }
+                            .capture()
+                            .unwrap()
+                            .stdout_str()
+                            .trim_end_matches('\n')
+                            .parse::<i32>()
+                            .unwrap();
                 }
-                .capture()
-                .unwrap()
-                .stdout_str();
-                if update_count.trim_end_matches('\n') != "matches" {
-                    total_updates += update_count
-                        .trim_end_matches('\n')
-                        .parse::<i32>()
-                        .unwrap_or(1);
+                "dnf" => {
+                    total_updates += {
+                        Exec::cmd("dnf").arg("check-update")
+                            | Exec::cmd("tail").args(&["-n", "+3"])
+                            | Exec::cmd("wc").arg("-l")
+                    }
+                    .capture()
+                    .unwrap()
+                    .stdout_str()
+                    .trim_end_matches('\n')
+                    .parse::<i32>()
+                    .unwrap();
                 }
+                _ => (),
             }
-            "apk" => {
-                let update_count =
-                    { Exec::cmd("apk").args(&["-u", "list"]) | Exec::cmd("wc").arg("-l") }
-                        .capture()
-                        .unwrap()
-                        .stdout_str();
-                total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
-            }
-            "dnf" => {
-                let update_count = {
-                    Exec::cmd("dnf").arg("check-update")
-                        | Exec::cmd("tail").args(&["-n", "+3"])
-                        | Exec::cmd("wc").arg("-l")
-                }
-                .capture()
-                .unwrap()
-                .stdout_str();
-                total_updates += update_count.trim_end_matches('\n').parse::<i32>().unwrap();
-            }
-            _ => (),
-        });
+        }
     } else {
         let pm = &json["package_managers"];
         match pm.to_string().trim_matches('\"') {
             "pacman" => {
-                let update_count = { Exec::cmd("checkupdates") | Exec::cmd("wc").arg("-l") }
+                total_updates = { Exec::cmd("checkupdates") | Exec::cmd("wc").arg("-l") }
                     .capture()
                     .unwrap()
-                    .stdout_str();
-                total_updates = update_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                    .stdout_str()
+                    .trim_end_matches('\n')
+                    .parse::<i32>()
+                    .unwrap();
             }
             "apt" => {
-                let update_count = {
+                total_updates = {
                     Exec::cmd("apt").args(&["list", "-u"])
                         | Exec::cmd("tail").args(&["-n", "+2"])
                         | Exec::cmd("wc").arg("-l")
                 }
                 .capture()
                 .unwrap()
-                .stdout_str();
-                total_updates = update_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                .stdout_str()
+                .trim_end_matches('\n')
+                .parse::<i32>()
+                .unwrap();
             }
             "xbps" => {
-                let update_count =
+                total_updates =
                     { Exec::cmd("xbps-install").arg("-Sun") | Exec::cmd("wc").arg("-l") }
                         .capture()
                         .unwrap()
-                        .stdout_str();
-                total_updates = update_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                        .stdout_str()
+                        .trim_end_matches('\n')
+                        .parse::<i32>()
+                        .unwrap();
             }
             "portage" => {
                 let update_count = {
@@ -147,23 +168,27 @@ fn check_updates() -> i32 {
                 }
             }
             "apk" => {
-                let update_count =
+                total_updates =
                     { Exec::cmd("apk").args(&["-u", "list"]) | Exec::cmd("wc").arg("-l") }
                         .capture()
                         .unwrap()
-                        .stdout_str();
-                total_updates = update_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                        .stdout_str()
+                        .trim_end_matches('\n')
+                        .parse::<i32>()
+                        .unwrap();
             }
             "dnf" => {
-                let update_count = {
+                total_updates = {
                     Exec::cmd("dnf").arg("check-update")
                         | Exec::cmd("tail").args(&["-n", "+3"])
                         | Exec::cmd("wc").arg("-l")
                 }
                 .capture()
                 .unwrap()
-                .stdout_str();
-                total_updates = update_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                .stdout_str()
+                .trim_end_matches('\n')
+                .parse::<i32>()
+                .unwrap();
             }
             _ => (),
         }
@@ -183,115 +208,140 @@ fn get_package_count() -> i32 {
 
     if json["package_managers"].is_array() {
         let pm = json["package_managers"].as_array().unwrap();
-        (0..pm.len()).for_each(|i| match pm[i].to_string().trim_matches('\"') {
-            "pacman" => {
-                let package_count = { Exec::cmd("pacman").arg("-Q") | Exec::cmd("wc").arg("-l") }
-                    .capture()
-                    .unwrap()
-                    .stdout_str();
-                total_packages += package_count.trim_end_matches('\n').parse::<i32>().unwrap();
-            }
-            "apt" => {
-                let package_count = {
-                    Exec::cmd("dpkg-query").arg("-l")
-                        | Exec::cmd("grep").arg("ii")
-                        | Exec::cmd("wc").arg("-l")
-                }
-                .capture()
-                .unwrap()
-                .stdout_str();
-                total_packages += package_count.trim_end_matches('\n').parse::<i32>().unwrap();
-            }
-            "xbps" => {
-                let package_count =
-                    { Exec::cmd("xbps-query").arg("-l") | Exec::cmd("wc").arg("-l") }
+        for i in 0..pm.len() {
+            match pm[i].to_string().trim_matches('\"') {
+                "pacman" => {
+                    total_packages += { Exec::cmd("pacman").arg("-Q") | Exec::cmd("wc").arg("-l") }
                         .capture()
                         .unwrap()
-                        .stdout_str();
-                total_packages += package_count.trim_end_matches('\n').parse::<i32>().unwrap();
-            }
-            "portage" => {
-                let package_count =
-                    { Exec::cmd("eix-installed").arg("-a") | Exec::cmd("wc").arg("-l") }
-                        .capture()
-                        .unwrap()
-                        .stdout_str();
-                total_packages += package_count.trim_end_matches('\n').parse::<i32>().unwrap();
-            }
-            "apk" => {
-                let package_count = { Exec::cmd("apk").arg("info") | Exec::cmd("wc").arg("-l") }
+                        .stdout_str()
+                        .trim_end_matches('\n')
+                        .parse::<i32>()
+                        .unwrap();
+                }
+                "apt" => {
+                    total_packages += {
+                        Exec::cmd("dpkg-query").arg("-l")
+                            | Exec::cmd("grep").arg("ii")
+                            | Exec::cmd("wc").arg("-l")
+                    }
                     .capture()
                     .unwrap()
-                    .stdout_str();
-                total_packages += package_count.trim_end_matches('\n').parse::<i32>().unwrap();
-            }
-            "dnf" => {
-                let package_count = {
-                    Exec::cmd("dnf").args(&["list", "installed"])
-                        | Exec::cmd("tail").args(&["-n", "+2"])
-                        | Exec::cmd("wc").arg("-l")
+                    .stdout_str()
+                    .trim_end_matches('\n')
+                    .parse::<i32>()
+                    .unwrap();
                 }
-                .capture()
-                .unwrap()
-                .stdout_str();
-                total_packages += package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                "xbps" => {
+                    total_packages +=
+                        { Exec::cmd("xbps-query").arg("-l") | Exec::cmd("wc").arg("-l") }
+                            .capture()
+                            .unwrap()
+                            .stdout_str()
+                            .trim_end_matches('\n')
+                            .parse::<i32>()
+                            .unwrap();
+                }
+                "portage" => {
+                    total_packages +=
+                        { Exec::cmd("eix-installed").arg("-a") | Exec::cmd("wc").arg("-l") }
+                            .capture()
+                            .unwrap()
+                            .stdout_str()
+                            .trim_end_matches('\n')
+                            .parse::<i32>()
+                            .unwrap();
+                }
+                "apk" => {
+                    total_packages += { Exec::cmd("apk").arg("info") | Exec::cmd("wc").arg("-l") }
+                        .capture()
+                        .unwrap()
+                        .stdout_str()
+                        .trim_end_matches('\n')
+                        .parse::<i32>()
+                        .unwrap();
+                }
+                "dnf" => {
+                    total_packages += {
+                        Exec::cmd("dnf").args(&["list", "installed"])
+                            | Exec::cmd("tail").args(&["-n", "+2"])
+                            | Exec::cmd("wc").arg("-l")
+                    }
+                    .capture()
+                    .unwrap()
+                    .stdout_str()
+                    .trim_end_matches('\n')
+                    .parse::<i32>()
+                    .unwrap();
+                }
+                _ => (),
             }
-            _ => (),
-        });
+        }
     } else {
         let pm = &json["package_managers"];
         match pm[0].to_string().trim_matches('\"') {
             "pacman" => {
-                let package_count = { Exec::cmd("pacman").arg("-Q") | Exec::cmd("wc").arg("-l") }
+                total_packages = { Exec::cmd("pacman").arg("-Q") | Exec::cmd("wc").arg("-l") }
                     .capture()
                     .unwrap()
-                    .stdout_str();
-                total_packages = package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                    .stdout_str()
+                    .trim_end_matches('\n')
+                    .parse::<i32>()
+                    .unwrap();
             }
             "apt" => {
-                let package_count = {
+                total_packages = {
                     Exec::cmd("dpkg-query").arg("-l")
                         | Exec::cmd("grep").arg("ii")
                         | Exec::cmd("wc").arg("-l")
                 }
                 .capture()
                 .unwrap()
-                .stdout_str();
-                total_packages = package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                .stdout_str()
+                .trim_end_matches('\n')
+                .parse::<i32>()
+                .unwrap();
             }
             "xbps" => {
-                let package_count =
-                    { Exec::cmd("xbps-query").arg("-l") | Exec::cmd("wc").arg("-l") }
-                        .capture()
-                        .unwrap()
-                        .stdout_str();
-                total_packages = package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                total_packages = { Exec::cmd("xbps-query").arg("-l") | Exec::cmd("wc").arg("-l") }
+                    .capture()
+                    .unwrap()
+                    .stdout_str()
+                    .trim_end_matches('\n')
+                    .parse::<i32>()
+                    .unwrap();
             }
             "portage" => {
-                let package_count =
+                total_packages =
                     { Exec::cmd("eix-installed").arg("-a") | Exec::cmd("wc").arg("-l") }
                         .capture()
                         .unwrap()
-                        .stdout_str();
-                total_packages = package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                        .stdout_str()
+                        .trim_end_matches('\n')
+                        .parse::<i32>()
+                        .unwrap();
             }
             "apk" => {
-                let package_count = { Exec::cmd("apk").arg("info") | Exec::cmd("wc").arg("-l") }
+                total_packages = { Exec::cmd("apk").arg("info") | Exec::cmd("wc").arg("-l") }
                     .capture()
                     .unwrap()
-                    .stdout_str();
-                total_packages = package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                    .stdout_str()
+                    .trim_end_matches('\n')
+                    .parse::<i32>()
+                    .unwrap();
             }
             "dnf" => {
-                let package_count = {
+                total_packages = {
                     Exec::cmd("dnf").args(&["list", "installed"])
                         | Exec::cmd("tail").args(&["-n", "+2"])
                         | Exec::cmd("wc").arg("-l")
                 }
                 .capture()
                 .unwrap()
-                .stdout_str();
-                total_packages = package_count.trim_end_matches('\n').parse::<i32>().unwrap();
+                .stdout_str()
+                .trim_end_matches('\n')
+                .parse::<i32>()
+                .unwrap();
             }
             _ => (),
         }
@@ -542,10 +592,17 @@ fn get_cpu() -> String {
             | Exec::cmd("tail").args(&["-n", "2"])
             | Exec::cmd("cut").args(&["-d", " ", "-f11"])
     }
-    .capture()
-    .unwrap()
-    .stdout_str();
-    cpu_usage.trim_end_matches('\n').substring(0, 4).to_owned() + "% Used"
+    .capture();
+    match cpu_usage {
+        Ok(cpu_usage) => {
+            let cpu_usage = cpu_usage.stdout_str();
+            cpu_usage.trim_end_matches('\n').substring(0, 4).to_owned() + "% Used"
+        }
+        Err(e) => panic!(
+            "Could not fetch CPU usage because: {} - Do you have iostat installed?",
+            e
+        ),
+    }
 }
 
 fn get_memory() -> String {
