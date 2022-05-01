@@ -1,3 +1,5 @@
+use std::process::Stdio;
+
 use {
     argparse::{ArgumentParser, Store},
     chrono::prelude::{Local, Timelike},
@@ -7,9 +9,8 @@ use {
         env,
         fs::File,
         io::{BufRead, BufReader},
-        process,
+        process::Command,
     },
-    subprocess::{Exec, Redirection},
     substring::Substring,
     sys_info::{hostname, linux_os_release, os_release},
     systemstat::{saturating_sub_bytes, Platform, System},
@@ -45,29 +46,49 @@ fn read_config() -> serde_json::Value {
         .expect("Failed to parse config file as a JSON.")
 }
 
-fn check_update_commmand(command: String) -> (CommandKind, Exec) {
+fn check_update_commmand(command: String) -> (CommandKind, Command) {
     match command.trim_matches('\"') {
-        "pacman" => (CommandKind::Pacman, Exec::cmd("checkupdates")),
-        "apt" => (
-            CommandKind::Apt,
-            Exec::cmd("apt")
-                .args(&["list", "-u"])
-                .stderr(Redirection::File(File::open("/dev/null").unwrap())),
-        ),
-        "xbps" => (CommandKind::Xbps, { Exec::cmd("xbps-install").arg("-Sun") }),
-        "portage" => (
-            CommandKind::Portage,
-            Exec::cmd("eix").args(&["-u", "--format", "'<installedversions:nameversion>'"]),
-        ),
-        "apk" => (CommandKind::Apk, { Exec::cmd("apk").args(&["-u", "list"]) }),
-        "dnf" => (CommandKind::Dnf, Exec::cmd("dnf").arg("check-update")),
+        "pacman" => (CommandKind::Pacman, Command::new("checkupdates")),
+        "apt" => (CommandKind::Apt, {
+            let mut command = Command::new("apt");
+            command.args(&["list", "-u"]);
+
+            command
+        }),
+        "xbps" => (CommandKind::Xbps, {
+            let mut command = Command::new("xbps-install");
+            command.arg("-Sun");
+            command
+        }),
+        "portage" => (CommandKind::Portage, {
+            let mut command = Command::new("eix");
+            command.args(&["-u", "--format", "'<installedversions:nameversion>'"]);
+            command
+        }),
+        "apk" => (CommandKind::Apk, {
+            let mut command = Command::new("apk");
+            command.args(&["-u", "list"]);
+            command
+        }),
+        "dnf" => (CommandKind::Dnf, {
+            let mut command = Command::new("dnf");
+            command.arg("check-update");
+            command
+        }),
         other => panic!("Unsupported package manager: {}", other),
     }
 }
 
 fn do_update_counting(arg: String) -> i32 {
-    let (kind, exec) = check_update_commmand(arg);
-    let reader = exec.stream_stdout().unwrap();
+    let (kind, mut command) = check_update_commmand(arg);
+    let reader = command
+        .stderr(Stdio::null())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap()
+        .stdout
+        .take()
+        .unwrap();
 
     let fs = BufReader::new(reader);
     match kind {
@@ -121,29 +142,52 @@ fn check_updates() -> i32 {
     }
 }
 
-fn check_installed_command(command: String) -> (CommandKind, Exec) {
+fn check_installed_command(command: String) -> (CommandKind, Command) {
     match command.trim_matches('\"') {
-        "pacman" => (CommandKind::Pacman, Exec::cmd("pacman").arg("-Q")),
-        "apt" => (
-            CommandKind::Apt,
-            Exec::cmd("apt")
-                .args(&["list", "-i"])
-                .stderr(Redirection::File(File::open("/dev/null").unwrap())),
-        ),
-        "xbps" => (CommandKind::Xbps, Exec::cmd("xbps-query").arg("-l")),
-        "portage" => (CommandKind::Portage, Exec::cmd("eix-installed").arg("-a")),
-        "apk" => (CommandKind::Apk, Exec::cmd("apk").arg("info")),
-        "dnf" => (
-            CommandKind::Dnf,
-            Exec::cmd("dnf").args(&["list", "installed"]),
-        ),
+        "pacman" => (CommandKind::Pacman, {
+            let mut command = Command::new("pacman");
+            command.arg("-Q");
+            command
+        }),
+        "apt" => (CommandKind::Apt, {
+            let mut command = Command::new("apt");
+            command.args(&["list", "-i"]);
+            command
+        }),
+        "xbps" => (CommandKind::Xbps, {
+            let mut command = Command::new("xbps-query");
+            command.arg("-l");
+            command
+        }),
+        "portage" => (CommandKind::Portage, {
+            let mut command = Command::new("eix-installed");
+            command.arg("-a");
+            command
+        }),
+        "apk" => (CommandKind::Apk, {
+            let mut command = Command::new("apk");
+            command.arg("info");
+            command
+        }),
+        "dnf" => (CommandKind::Dnf, {
+            let mut command = Command::new("dnf");
+            command.args(&["list", "installed"]);
+            command
+        }),
         other => panic!("unknown package manager: {}", other),
     }
 }
 
 fn do_installed_counting(arg: String) -> i32 {
-    let (kind, exec) = check_installed_command(arg);
-    let reader = exec.stream_stdout().unwrap();
+    let (kind, mut command) = check_installed_command(arg);
+    let reader = command
+        .stderr(Stdio::null())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap()
+        .stdout
+        .take()
+        .unwrap();
 
     let fs = BufReader::new(reader);
     match kind {
@@ -195,6 +239,7 @@ fn get_package_count() -> i32 {
 
 fn get_release() -> String {
     let rel = linux_os_release().unwrap().pretty_name.unwrap();
+
     if rel.len() > 41 {
         format!("{}...", rel.trim_matches('\"').substring(0, 37))
     } else {
@@ -218,7 +263,7 @@ fn get_song() -> String {
     if JSON["song"] == false {
         return "".to_string();
     }
-    let song = process::Command::new("playerctl")
+    let song = Command::new("playerctl")
         .args(&["metadata", "-f", "{{ artist }} - {{ title }}"])
         .output()
         .unwrap();
