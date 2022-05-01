@@ -102,6 +102,7 @@ async fn count_lines(skip: i32, mut reader: BufReader<ChildStdout>) -> i32 {
     }
 }
 
+#[tracing::instrument]
 async fn do_update_counting(arg: String) -> i32 {
     let (kind, mut command) = check_update_commmand(arg);
     let reader = command
@@ -185,6 +186,7 @@ fn check_installed_command(command: String) -> (CommandKind, Command) {
     }
 }
 
+#[tracing::instrument]
 async fn do_installed_counting(arg: String) -> i32 {
     let (kind, mut command) = check_installed_command(arg);
     let reader = command
