@@ -308,12 +308,11 @@ fn get_weather() -> String {
 }
 
 fn greeting() -> String {
-    let dt = Local::now();
     let name = JSON
         .get("name")
         .expect("Couldn't find 'name' attribute.")
         .to_string();
-    match dt.hour() {
+    match Local::now().hour() {
         6..=11 => "🌇 Good morning",
         12..=17 => "🏙️ Good afternoon",
         18..=22 => "🌆 Good evening",
@@ -333,10 +332,6 @@ fn get_hostname() -> String {
 }
 
 fn get_datetime() -> String {
-    let time_format = JSON
-        .get("time_format")
-        .expect("Couldn't find 'time_format' attribute.")
-        .to_string();
     let dt = Local::now();
     let day = dt.format("%e").to_string();
     let date = match day.trim_start_matches(' ') {
@@ -345,7 +340,12 @@ fn get_datetime() -> String {
         "3" | "23" => format!("{} {}rd", dt.format("%B"), day.trim_start_matches(' ')),
         _ => format!("{} {}th", dt.format("%B"), day.trim_start_matches(' ')),
     };
-    let time = match time_format.trim_matches('\"') {
+    let time = match JSON
+        .get("time_format")
+        .expect("Couldn't find 'time_format' attribute.")
+        .to_string()
+        .trim_matches('\"')
+    {
         "12h" => dt.format("%l:%M %p").to_string(),
         "24h" => dt.format("%H:%M").to_string(),
         _ => "off".to_string(),
@@ -394,16 +394,14 @@ fn count_updates() -> String {
 }
 
 fn get_memory() -> String {
-    let sys = System::new();
-    match sys.memory() {
+    match System::new().memory() {
         Ok(mem) => format!("{} Used", saturating_sub_bytes(mem.total, mem.free)),
         Err(x) => panic!("Could not get memory because: {}", x),
     }
 }
 
 fn get_disk_usage() -> String {
-    let sys = System::new();
-    match sys.mount_at("/") {
+    match System::new().mount_at("/") {
         Ok(disk) => {
             format!("{} Free", disk.free)
         }
