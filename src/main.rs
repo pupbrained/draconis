@@ -1,15 +1,14 @@
-use std::process::Stdio;
-
 use {
     argparse::{ArgumentParser, Store},
     chrono::prelude::{Local, Timelike},
+    mpris::PlayerFinder,
     once_cell::sync::Lazy,
     openweathermap::blocking::weather,
     std::{
         env,
         fs::File,
         io::{BufRead, BufReader},
-        process::Command,
+        process::{Command, Stdio},
     },
     substring::Substring,
     sys_info::{hostname, linux_os_release, os_release},
@@ -263,20 +262,23 @@ fn get_song() -> String {
     if JSON["song"] == false {
         return "".to_string();
     }
-    let song = Command::new("playerctl")
-        .args(&["metadata", "-f", "{{ artist }} - {{ title }}"])
-        .output()
-        .unwrap();
-    let songerr = String::from_utf8_lossy(&song.stderr);
-    let songname = String::from_utf8_lossy(&song.stdout);
-    if songerr != "No players found" {
-        if songname.len() > 41 {
-            format!("{}...", songname.substring(0, 37))
-        } else {
-            songname.trim_end_matches('\n').to_string()
-        }
+    let player = PlayerFinder::new()
+        .expect("Could not connect to DBus")
+        .find_active();
+    let player = match player {
+        Ok(p) => p,
+        Err(_) => return "".to_string(),
+    };
+    let song = player.get_metadata().expect("Failed to get metadata");
+    let songname = format!(
+        "{} - {}",
+        song.artists().unwrap().first().unwrap(),
+        song.title().unwrap()
+    );
+    if songname.len() > 41 {
+        format!("{}...", songname.substring(0, 37))
     } else {
-        "".to_string()
+        songname.trim_end_matches('\n').to_string()
     }
 }
 
