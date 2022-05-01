@@ -228,6 +228,7 @@ version = "2.0.0"
 dependencies = [
  "argparse",
  "chrono",
+ "futures",
  "openweathermap",
  "serde_json",
  "subprocess",
