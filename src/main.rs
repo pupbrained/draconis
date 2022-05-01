@@ -1,15 +1,12 @@
-use subprocess::Pipeline;
-use tokio::task::spawn_blocking;
-
 use {
     argparse::{ArgumentParser, Store},
     chrono::prelude::{Local, Timelike},
     openweathermap::blocking::weather,
     std::{env, fs::File, io::Read, process},
-    subprocess::{Exec, Redirection},
+    subprocess::{Exec, Pipeline, Redirection},
     substring::Substring,
     systemstat::{saturating_sub_bytes, Platform, System},
-    tokio::task::spawn,
+    tokio::task::{spawn, spawn_blocking},
     unicode_segmentation::UnicodeSegmentation,
 };
 
