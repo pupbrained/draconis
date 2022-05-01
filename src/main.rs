@@ -3,7 +3,12 @@ use {
     chrono::prelude::{Local, Timelike},
     once_cell::sync::Lazy,
     openweathermap::blocking::weather,
-    std::{env, fs::File, io::Read, process},
+    std::{
+        env,
+        fs::File,
+        io::{BufRead, BufReader},
+        process,
+    },
     subprocess::{Exec, Redirection},
     substring::Substring,
     systemstat::{saturating_sub_bytes, Platform, System},
@@ -81,28 +86,26 @@ fn check_updates() -> i32 {
         commands.push((kind, reader));
     }
 
-    for (kind, mut reader) in commands {
-        let mut s = String::new();
-        reader.read_to_string(&mut s).unwrap();
-
+    for (kind, reader) in commands {
+        let fs = BufReader::new(reader);
         match kind {
             CommandKind::Apt => {
-                let fs = s.lines().skip(2).count().to_string();
-                total_updates += fs.parse::<i32>().unwrap();
+                let num = fs.lines().skip(2).count().to_string();
+                total_updates += num.parse::<i32>().unwrap();
             }
             CommandKind::Portage => {
-                let fs = s.lines().count().to_string();
-                if fs.trim_end_matches('\n') != "matches" {
-                    total_updates += fs.trim_end_matches('\n').parse::<i32>().unwrap_or(1);
+                let num = fs.lines().count().to_string();
+                if num.trim_end_matches('\n') != "matches" {
+                    total_updates += num.trim_end_matches('\n').parse::<i32>().unwrap_or(1);
                 }
             }
             CommandKind::Dnf => {
-                let fs = s.lines().skip(3).count().to_string();
-                total_updates += fs.parse::<i32>().unwrap();
+                let num = fs.lines().skip(3).count().to_string();
+                total_updates += num.parse::<i32>().unwrap();
             }
             _ => {
-                let fs = s.lines().count().to_string();
-                total_updates += fs.trim_end_matches('\n').parse::<i32>().unwrap();
+                let num = fs.lines().count().to_string();
+                total_updates += num.trim_end_matches('\n').parse::<i32>().unwrap();
             }
         }
     }
@@ -152,23 +155,22 @@ fn get_package_count() -> i32 {
         commands.push((kind, reader));
     }
 
-    for (kind, mut reader) in commands {
-        let mut s = String::new();
-        reader.read_to_string(&mut s).unwrap();
+    for (kind, reader) in commands {
+        let fs = BufReader::new(reader);
         match kind {
             CommandKind::Apt => {
-                let fs = s.lines().skip(2).count().to_string();
-                total_packages += fs.parse::<i32>().unwrap();
+                let num = fs.lines().skip(2).count().to_string();
+                total_packages += num.parse::<i32>().unwrap();
             }
             CommandKind::Portage => {
-                let fs = s.lines().count().to_string();
-                if fs.trim_end_matches('\n') != "matches" {
-                    total_packages += fs.trim_end_matches('\n').parse::<i32>().unwrap_or(1);
+                let num = fs.lines().count().to_string();
+                if num.trim_end_matches('\n') != "matches" {
+                    total_packages += num.trim_end_matches('\n').parse::<i32>().unwrap_or(1);
                 }
             }
             _ => {
-                let fs = s.lines().count().to_string();
-                total_packages += fs.trim_end_matches('\n').parse::<i32>().unwrap();
+                let num = fs.lines().count().to_string();
+                total_packages += num.trim_end_matches('\n').parse::<i32>().unwrap();
             }
         }
     }
