@@ -11,8 +11,10 @@ use {
     },
     subprocess::{Exec, Redirection},
     substring::Substring,
+    sys_info::{hostname, linux_os_release, os_release},
     systemstat::{saturating_sub_bytes, Platform, System},
     unicode_segmentation::UnicodeSegmentation,
+    whoami::username,
 };
 
 #[derive(Debug)]
@@ -192,11 +194,7 @@ fn get_package_count() -> i32 {
 }
 
 fn get_release() -> String {
-    let rel = Exec::cmd("lsb_release")
-        .args(&["-s", "-d"])
-        .capture()
-        .unwrap()
-        .stdout_str();
+    let rel = linux_os_release().unwrap().pretty_name.unwrap();
     if rel.len() > 41 {
         format!("{}...", rel.trim_matches('\"').substring(0, 37))
     } else {
@@ -208,15 +206,11 @@ fn get_release() -> String {
 }
 
 fn get_kernel() -> String {
-    let uname = Exec::cmd("uname")
-        .arg("-sr")
-        .capture()
-        .unwrap()
-        .stdout_str();
-    if uname.len() > 41 {
-        format!("{}...", uname.substring(0, 37))
+    let kernel = os_release().unwrap();
+    if kernel.len() > 41 {
+        format!("{}...", kernel.substring(0, 37))
     } else {
-        uname.trim_end_matches('\n').to_string()
+        kernel.trim_end_matches('\n').to_string()
     }
 }
 
@@ -225,9 +219,7 @@ fn get_song() -> String {
         return "".to_string();
     }
     let song = process::Command::new("playerctl")
-        .arg("metadata")
-        .arg("-f")
-        .arg("{{ artist }} - {{ title }}")
+        .args(&["metadata", "-f", "{{ artist }} - {{ title }}"])
         .output()
         .unwrap();
     let songerr = String::from_utf8_lossy(&song.stderr);
@@ -351,8 +343,11 @@ fn greeting() -> String {
 }
 
 fn get_hostname() -> String {
+    if JSON["hostname"] == serde_json::json![null] {
+        return format!("{}@{}", username(), hostname().unwrap());
+    }
     JSON.get("hostname")
-        .expect("Couldn't find 'hostname' attribute.")
+        .unwrap()
         .to_string()
         .trim_matches('\"')
         .to_string()
