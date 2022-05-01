@@ -319,12 +319,11 @@ fn get_weather() -> String {
 }
 
 fn greeting() -> String {
-    let dt = Local::now();
     let name = JSON
         .get("name")
         .expect("Couldn't find 'name' attribute.")
         .to_string();
-    match dt.hour() {
+    match Local::now().hour() {
         6..=11 => "🌇 Good morning",
         12..=17 => "🏙️ Good afternoon",
         18..=22 => "🌆 Good evening",
@@ -344,10 +343,6 @@ fn get_hostname() -> String {
 }
 
 fn get_datetime() -> String {
-    let time_format = JSON
-        .get("time_format")
-        .expect("Couldn't find 'time_format' attribute.")
-        .to_string();
     let dt = Local::now();
     let day = dt.format("%e").to_string();
     let date = match day.trim_start_matches(' ') {
@@ -356,7 +351,12 @@ fn get_datetime() -> String {
         "3" | "23" => format!("{} {}rd", dt.format("%B"), day.trim_start_matches(' ')),
         _ => format!("{} {}th", dt.format("%B"), day.trim_start_matches(' ')),
     };
-    let time = match time_format.trim_matches('\"') {
+    let time = match JSON
+        .get("time_format")
+        .expect("Couldn't find 'time_format' attribute.")
+        .to_string()
+        .trim_matches('\"')
+    {
         "12h" => dt.format("%l:%M %p").to_string(),
         "24h" => dt.format("%H:%M").to_string(),
         _ => "off".to_string(),
@@ -405,16 +405,14 @@ async fn count_updates() -> String {
 }
 
 fn get_memory() -> String {
-    let sys = System::new();
-    match sys.memory() {
+    match System::new().memory() {
         Ok(mem) => format!("{} Used", saturating_sub_bytes(mem.total, mem.free)),
         Err(x) => panic!("Could not get memory because: {}", x),
     }
 }
 
 fn get_disk_usage() -> String {
-    let sys = System::new();
-    match sys.mount_at("/") {
+    match System::new().mount_at("/") {
         Ok(disk) => {
             format!("{} Free", disk.free)
         }
@@ -424,31 +422,18 @@ fn get_disk_usage() -> String {
 
 #[tokio::main]
 async fn main() {
-    let hostname_fut = spawn_blocking(get_hostname);
-    let greeting_fut = spawn_blocking(greeting);
-    let datetime_fut = spawn_blocking(get_datetime);
-    let weather_fut = spawn_blocking(get_weather);
-    let release_fut = spawn_blocking(get_release);
-    let kernel_fut = spawn_blocking(get_kernel);
-    let memory_fut = spawn_blocking(get_memory);
-    let disk_fut = spawn_blocking(get_disk_usage);
-    let environment_fut = spawn_blocking(get_environment);
-    let up_count_fut = spawn(count_updates());
-    let package_count_fut = spawn(get_package_count());
-    let song_fut = spawn_blocking(get_song);
-
-    let hostname = hostname_fut.await.unwrap();
-    let greeting = greeting_fut.await.unwrap();
-    let datetime = datetime_fut.await.unwrap();
-    let weather = weather_fut.await.unwrap();
-    let release = release_fut.await.unwrap();
-    let kernel = kernel_fut.await.unwrap();
-    let memory = memory_fut.await.unwrap();
-    let disk = disk_fut.await.unwrap();
-    let environment = environment_fut.await.unwrap();
-    let up_count = up_count_fut.await.unwrap();
-    let package_count = package_count_fut.await.unwrap();
-    let song = song_fut.await.unwrap();
+    let hostname = spawn_blocking(get_hostname).await.unwrap();
+    let greeting = spawn_blocking(greeting).await.unwrap();
+    let datetime = spawn_blocking(get_datetime).await.unwrap();
+    let weather = spawn_blocking(get_weather).await.unwrap();
+    let release = spawn_blocking(get_release).await.unwrap();
+    let kernel = spawn_blocking(get_kernel).await.unwrap();
+    let memory = spawn_blocking(get_memory).await.unwrap();
+    let disk = spawn_blocking(get_disk_usage).await.unwrap();
+    let environment = spawn_blocking(get_environment).await.unwrap();
+    let up_count = spawn(count_updates()).await.unwrap();
+    let package_count = spawn(get_package_count()).await.unwrap();
+    let song = spawn_blocking(get_song).await.unwrap();
 
     println!(
         "{}",
