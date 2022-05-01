@@ -36,7 +36,7 @@ fn read_config() -> serde_json::Value {
         .expect("Failed to parse config file as a JSON.")
 }
 
-fn parse_updates(command: String) -> (CommandKind, Pipeline) {
+fn update_commmand(command: String) -> (CommandKind, Pipeline) {
     match command.trim_matches('\"') {
         "pacman" => (
             CommandKind::Pacman,
@@ -85,13 +85,13 @@ async fn check_updates() -> i32 {
         let pm = json["package_managers"].as_array().unwrap();
 
         for arg in pm {
-            let (kind, exec) = parse_updates(arg.to_string());
+            let (kind, exec) = update_commmand(arg.to_string());
             let reader = exec.stream_stdout().unwrap();
             commands.push((kind, reader));
         }
     } else {
         let pm = &json["package_managers"];
-        let (kind, exec) = parse_updates(pm.to_string());
+        let (kind, exec) = update_commmand(pm.to_string());
         let reader = exec.stream_stdout().unwrap();
         commands.push((kind, reader));
     }
@@ -120,7 +120,7 @@ async fn check_updates() -> i32 {
     total_updates
 }
 
-fn parse_counts(command: String) -> Pipeline {
+fn count_command(command: String) -> Pipeline {
     match command.trim_matches('\"') {
         "pacman" => Exec::cmd("pacman").arg("-Q") | Exec::cmd("wc").arg("-l"),
         "apt" => {
@@ -152,11 +152,11 @@ async fn get_package_count() -> i32 {
     if json["package_managers"].is_array() {
         let pm = json["package_managers"].as_array().unwrap();
         for arg in pm {
-            commands.push(parse_counts(arg.to_string()).stream_stdout().unwrap());
+            commands.push(count_command(arg.to_string()).stream_stdout().unwrap());
         }
     } else {
         let pm = &json["package_managers"];
-        commands.push(parse_counts(pm[0].to_string()).stream_stdout().unwrap());
+        commands.push(count_command(pm[0].to_string()).stream_stdout().unwrap());
     }
 
     for mut reader in commands {
