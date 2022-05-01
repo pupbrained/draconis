@@ -1,12 +1,10 @@
-use std::io::ErrorKind;
-
 use {
     argparse::{ArgumentParser, Store},
     chrono::prelude::{Local, Timelike},
     mpris::PlayerFinder,
     once_cell::sync::Lazy,
     openweathermap::weather,
-    std::{env, fs::File, process::Stdio, time::Instant},
+    std::{env, fs::File, io::ErrorKind, process::Stdio, time::Instant},
     substring::Substring,
     sys_info::{hostname, linux_os_release, os_release},
     systemstat::{saturating_sub_bytes, Platform, System},
