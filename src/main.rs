@@ -7,7 +7,6 @@ use {
     subprocess::{Exec, Pipeline, Redirection},
     substring::Substring,
     systemstat::{saturating_sub_bytes, Platform, System},
-    tokio::task::{spawn, spawn_blocking},
     unicode_segmentation::UnicodeSegmentation,
 };
 
@@ -75,7 +74,7 @@ fn update_commmand(command: String) -> (CommandKind, Pipeline) {
     }
 }
 
-async fn check_updates() -> i32 {
+fn check_updates() -> i32 {
     let mut total_updates = 0;
     let mut commands = Vec::new();
 
@@ -99,13 +98,8 @@ async fn check_updates() -> i32 {
     }
 
     for (kind, mut reader) in commands {
-        let s = spawn_blocking(move || {
-            let mut s = String::new();
-            reader.read_to_string(&mut s).unwrap(); // this part definitely blocks
-            s
-        })
-        .await
-        .unwrap();
+        let mut s = String::new();
+        reader.read_to_string(&mut s).unwrap(); // this part definitely blocks
 
         match kind {
             CommandKind::Portage => {
@@ -142,7 +136,7 @@ fn count_command(command: String) -> Pipeline {
     }
 }
 
-async fn get_package_count() -> i32 {
+fn get_package_count() -> i32 {
     let mut total_packages = 0;
     let mut commands = Vec::new();
 
@@ -161,13 +155,8 @@ async fn get_package_count() -> i32 {
     }
 
     for mut reader in commands {
-        let s = spawn_blocking(move || {
-            let mut s = String::new();
-            reader.read_to_string(&mut s).unwrap(); // this part definitely blocks
-            s
-        })
-        .await
-        .unwrap();
+        let mut s = String::new();
+        reader.read_to_string(&mut s).unwrap(); // this part definitely blocks
 
         total_packages += s.trim_end_matches('\n').parse::<i32>().unwrap();
     }
@@ -379,8 +368,8 @@ fn get_datetime() -> String {
     format!("│ {} {}, {}", time_icon, date, time.trim_start_matches(' '))
 }
 
-async fn count_updates() -> String {
-    let count = check_updates().await;
+fn count_updates() -> String {
+    let count = check_updates();
     let update_count;
     let updates: String = match count {
         -1 => "none",
@@ -420,20 +409,19 @@ fn get_disk_usage() -> String {
     }
 }
 
-#[tokio::main]
-async fn main() {
-    let hostname = spawn_blocking(get_hostname).await.unwrap();
-    let greeting = spawn_blocking(greeting).await.unwrap();
-    let datetime = spawn_blocking(get_datetime).await.unwrap();
-    let weather = spawn_blocking(get_weather).await.unwrap();
-    let release = spawn_blocking(get_release).await.unwrap();
-    let kernel = spawn_blocking(get_kernel).await.unwrap();
-    let memory = spawn_blocking(get_memory).await.unwrap();
-    let disk = spawn_blocking(get_disk_usage).await.unwrap();
-    let environment = spawn_blocking(get_environment).await.unwrap();
-    let up_count = spawn(count_updates()).await.unwrap();
-    let package_count = spawn(get_package_count()).await.unwrap();
-    let song = spawn_blocking(get_song).await.unwrap();
+fn main() {
+    let hostname = get_hostname();
+    let greeting = greeting();
+    let datetime = get_datetime();
+    let weather = get_weather();
+    let release = get_release();
+    let kernel = get_kernel();
+    let memory = get_memory();
+    let disk = get_disk_usage();
+    let environment = get_environment();
+    let up_count = count_updates();
+    let package_count = get_package_count();
+    let song = get_song();
 
     println!(
         "{}",
