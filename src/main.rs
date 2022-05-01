@@ -1,3 +1,5 @@
+use whoami::realname;
+
 use {
     argparse::{ArgumentParser, Store},
     chrono::prelude::{Local, Timelike},
@@ -260,7 +262,7 @@ fn get_kernel_blocking() -> String {
 
 #[tracing::instrument]
 fn get_song() -> String {
-    if JSON["song"] == false {
+    if JSON["song"] == false || JSON["song"] == serde_json::json![null] {
         return "".to_string();
     }
     let player = PlayerFinder::new()
@@ -311,6 +313,13 @@ fn get_environment() -> String {
 
 #[tracing::instrument]
 async fn get_weather() -> String {
+    if JSON["location"] == serde_json::json![null]
+        || JSON["units"] == serde_json::json![null]
+        || JSON["lang"] == serde_json::json![null]
+        || JSON["api_key"] == serde_json::json![null]
+    {
+        return "".to_string();
+    }
     let deg;
     let icon_code;
     let icon;
@@ -380,10 +389,15 @@ async fn get_weather() -> String {
 
 #[tracing::instrument]
 fn greeting() -> String {
-    let name = JSON
-        .get("name")
-        .expect("Couldn't find 'name' attribute.")
-        .to_string();
+    let name;
+    if JSON["name"] == serde_json::json![null] {
+        name = realname();
+    } else {
+        name = JSON
+            .get("name")
+            .expect("Couldn't find 'name' attribute.")
+            .to_string();
+    }
     match Local::now().hour() {
         6..=11 => "🌇 Good morning",
         12..=17 => "🏙️ Good afternoon",
@@ -409,6 +423,9 @@ fn get_hostname() -> String {
 
 #[tracing::instrument]
 fn get_datetime() -> String {
+    if JSON["time_format"] == serde_json::json![null] {
+        return "".to_string();
+    }
     let dt = Local::now();
     let day = dt.format("%e").to_string();
     let date = match day.trim_start_matches(' ') {
@@ -527,8 +544,8 @@ async fn main() {
     let weather = weather.await.unwrap();
     let up_count = up_count.await.unwrap();
     let package_count = package_count.await.unwrap();
-    let song = song.await.unwrap();
 
+    let song = song.await.unwrap();
     let release = release.await.unwrap();
     let kernel = kernel.await.unwrap();
 
@@ -543,8 +560,17 @@ async fn main() {
     );
 
     println!("{}", calc_whitespace(format!("│ {}!", greeting)));
-    println!("{}", calc_whitespace(datetime));
-    println!("{}", calc_whitespace(weather));
+
+    match datetime.as_ref() {
+        "" => (),
+        _ => println!("{}", calc_whitespace(datetime)),
+    }
+
+    match weather.as_ref() {
+        "" => (),
+        _ => println!("{}", calc_whitespace(weather)),
+    }
+
     println!("{}", calc_whitespace(format!("│ 💻 {}", release)));
     println!("{}", calc_whitespace(format!("│ 🫀 {}", kernel)));
     println!("{}", calc_whitespace(format!("│ 🧠 {}", memory)));
