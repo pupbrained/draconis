@@ -1,6 +1,7 @@
 use {
     argparse::{ArgumentParser, Store},
     chrono::prelude::{Local, Timelike},
+    mpris::PlayerFinder,
     once_cell::sync::Lazy,
     openweathermap::weather,
     std::{env, fs::File, process::Stdio},
@@ -247,25 +248,27 @@ fn get_kernel_blocking() -> String {
     }
 }
 
-async fn get_song() -> String {
+fn get_song() -> String {
     if JSON["song"] == false {
         return "".to_string();
     }
-    let song = Command::new("playerctl")
-        .args(&["metadata", "-f", "{{ artist }} - {{ title }}"])
-        .output()
-        .await
-        .unwrap();
-    let songerr = String::from_utf8_lossy(&song.stderr);
-    let songname = String::from_utf8_lossy(&song.stdout);
-    if songerr != "No players found" {
-        if songname.len() > 41 {
-            format!("{}...", songname.substring(0, 37))
-        } else {
-            songname.trim_end_matches('\n').to_string()
-        }
+    let player = PlayerFinder::new()
+        .expect("Could not connect to DBus")
+        .find_active(); // this is blocking
+    let player = match player {
+        Ok(p) => p,
+        Err(_) => return "".to_string(),
+    };
+    let song = player.get_metadata().expect("Failed to get metadata"); // this is blocking
+    let songname = format!(
+        "{} - {}",
+        song.artists().unwrap().first().unwrap(),
+        song.title().unwrap()
+    );
+    if songname.len() > 41 {
+        format!("{}...", songname.substring(0, 37))
     } else {
-        "".to_string()
+        songname.trim_end_matches('\n').to_string()
     }
 }
 
@@ -483,9 +486,9 @@ async fn main() {
     let weather = tokio::spawn(get_weather());
     let up_count = tokio::spawn(count_updates());
     let package_count = tokio::spawn(get_package_count());
-    let song = tokio::spawn(get_song());
 
     // These are functions that block
+    let song = tokio::task::spawn_blocking(get_song);
     let release = tokio::task::spawn_blocking(get_release_blocking);
     let kernel = tokio::task::spawn_blocking(get_kernel_blocking);
 
