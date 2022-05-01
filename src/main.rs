@@ -4,7 +4,7 @@ use {
     once_cell::sync::Lazy,
     openweathermap::blocking::weather,
     std::{env, fs::File, io::Read, process},
-    subprocess::{Exec, Pipeline, Redirection},
+    subprocess::{Exec, Redirection},
     substring::Substring,
     systemstat::{saturating_sub_bytes, Platform, System},
     unicode_segmentation::UnicodeSegmentation,
@@ -38,38 +38,22 @@ fn read_config() -> serde_json::Value {
         .expect("Failed to parse config file as a JSON.")
 }
 
-fn update_commmand(command: String) -> (CommandKind, Pipeline) {
+fn update_commmand(command: String) -> (CommandKind, Exec) {
     match command.trim_matches('\"') {
-        "pacman" => (
-            CommandKind::Pacman,
-            Exec::cmd("checkupdates") | Exec::cmd("wc").arg("-l"),
-        ),
+        "pacman" => (CommandKind::Pacman, Exec::cmd("checkupdates")),
         "apt" => (
             CommandKind::Apt,
             Exec::cmd("apt")
                 .args(&["list", "-u"])
-                .stderr(Redirection::File(File::open("/dev/null").unwrap()))
-                | Exec::cmd("tail").args(&["-n", "+2"])
-                | Exec::cmd("wc").arg("-l"),
+                .stderr(Redirection::File(File::open("/dev/null").unwrap())),
         ),
-        "xbps" => (CommandKind::Xbps, {
-            Exec::cmd("xbps-install").arg("-Sun") | Exec::cmd("wc").arg("-l")
-        }),
+        "xbps" => (CommandKind::Xbps, { Exec::cmd("xbps-install").arg("-Sun") }),
         "portage" => (
             CommandKind::Portage,
-            Exec::cmd("eix").args(&["-u", "--format", "'<installedversions:nameversion>'"])
-                | Exec::cmd("tail").arg("-1")
-                | Exec::cmd("cut").args(&["-d", " ", "-f2"]),
+            Exec::cmd("eix").args(&["-u", "--format", "'<installedversions:nameversion>'"]),
         ),
-        "apk" => (CommandKind::Apk, {
-            Exec::cmd("apk").args(&["-u", "list"]) | Exec::cmd("wc").arg("-l")
-        }),
-        "dnf" => (
-            CommandKind::Dnf,
-            Exec::cmd("dnf").arg("check-update")
-                | Exec::cmd("tail").args(&["-n", "+3"])
-                | Exec::cmd("wc").arg("-l"),
-        ),
+        "apk" => (CommandKind::Apk, { Exec::cmd("apk").args(&["-u", "list"]) }),
+        "dnf" => (CommandKind::Dnf, Exec::cmd("dnf").arg("check-update")),
         other => panic!("Unsupported package manager: {}", other),
     }
 }
@@ -99,16 +83,26 @@ fn check_updates() -> i32 {
 
     for (kind, mut reader) in commands {
         let mut s = String::new();
-        reader.read_to_string(&mut s).unwrap(); // this part definitely blocks
+        reader.read_to_string(&mut s).unwrap();
 
         match kind {
+            CommandKind::Apt => {
+                let fs = s.lines().skip(2).count().to_string();
+                total_updates += fs.parse::<i32>().unwrap();
+            }
             CommandKind::Portage => {
-                if s.trim_end_matches('\n') != "matches" {
-                    total_updates += s.trim_end_matches('\n').parse::<i32>().unwrap_or(1);
+                let fs = s.lines().count().to_string();
+                if fs.trim_end_matches('\n') != "matches" {
+                    total_updates += fs.trim_end_matches('\n').parse::<i32>().unwrap_or(1);
                 }
             }
+            CommandKind::Dnf => {
+                let fs = s.lines().skip(3).count().to_string();
+                total_updates += fs.parse::<i32>().unwrap();
+            }
             _ => {
-                total_updates += s.trim_end_matches('\n').parse::<i32>().unwrap();
+                let fs = s.lines().count().to_string();
+                total_updates += fs.trim_end_matches('\n').parse::<i32>().unwrap();
             }
         }
     }
@@ -116,22 +110,22 @@ fn check_updates() -> i32 {
     total_updates
 }
 
-fn count_command(command: String) -> Pipeline {
+fn count_command(command: String) -> (CommandKind, Exec) {
     match command.trim_matches('\"') {
-        "pacman" => Exec::cmd("pacman").arg("-Q") | Exec::cmd("wc").arg("-l"),
-        "apt" => {
-            Exec::cmd("dpkg-query").arg("-l")
-                | Exec::cmd("grep").arg("ii")
-                | Exec::cmd("wc").arg("-l")
-        }
-        "xbps" => Exec::cmd("xbps-query").arg("-l") | Exec::cmd("wc").arg("-l"),
-        "portage" => Exec::cmd("eix-installed").arg("-a") | Exec::cmd("wc").arg("-l"),
-        "apk" => Exec::cmd("apk").arg("info") | Exec::cmd("wc").arg("-l"),
-        "dnf" => {
-            Exec::cmd("dnf").args(&["list", "installed"])
-                | Exec::cmd("tail").args(&["-n", "+2"])
-                | Exec::cmd("wc").arg("-l")
-        }
+        "pacman" => (CommandKind::Pacman, Exec::cmd("pacman").arg("-Q")),
+        "apt" => (
+            CommandKind::Apt,
+            Exec::cmd("apt")
+                .args(&["list", "-i"])
+                .stderr(Redirection::File(File::open("/dev/null").unwrap())),
+        ),
+        "xbps" => (CommandKind::Xbps, Exec::cmd("xbps-query").arg("-l")),
+        "portage" => (CommandKind::Portage, Exec::cmd("eix-installed").arg("-a")),
+        "apk" => (CommandKind::Apk, Exec::cmd("apk").arg("info")),
+        "dnf" => (
+            CommandKind::Dnf,
+            Exec::cmd("dnf").args(&["list", "installed"]),
+        ),
         other => panic!("unknown package manager: {}", other),
     }
 }
@@ -147,18 +141,36 @@ fn get_package_count() -> i32 {
     if JSON["package_managers"].is_array() {
         let pm = JSON["package_managers"].as_array().unwrap();
         for arg in pm {
-            commands.push(count_command(arg.to_string()).stream_stdout().unwrap());
+            let (kind, exec) = count_command(arg.to_string());
+            let reader = exec.stream_stdout().unwrap();
+            commands.push((kind, reader));
         }
     } else {
         let pm = &JSON["package_managers"];
-        commands.push(count_command(pm[0].to_string()).stream_stdout().unwrap());
+        let (kind, exec) = count_command(pm.to_string());
+        let reader = exec.stream_stdout().unwrap();
+        commands.push((kind, reader));
     }
 
-    for mut reader in commands {
+    for (kind, mut reader) in commands {
         let mut s = String::new();
-        reader.read_to_string(&mut s).unwrap(); // this part definitely blocks
-
-        total_packages += s.trim_end_matches('\n').parse::<i32>().unwrap();
+        reader.read_to_string(&mut s).unwrap();
+        match kind {
+            CommandKind::Apt => {
+                let fs = s.lines().skip(2).count().to_string();
+                total_packages += fs.parse::<i32>().unwrap();
+            }
+            CommandKind::Portage => {
+                let fs = s.lines().count().to_string();
+                if fs.trim_end_matches('\n') != "matches" {
+                    total_packages += fs.trim_end_matches('\n').parse::<i32>().unwrap_or(1);
+                }
+            }
+            _ => {
+                let fs = s.lines().count().to_string();
+                total_packages += fs.trim_end_matches('\n').parse::<i32>().unwrap();
+            }
+        }
     }
 
     total_packages
@@ -226,14 +238,14 @@ fn upper_first(s: String) -> String {
 
 fn calc_whitespace(text: String) -> String {
     let size = 45 - text.graphemes(true).count();
-    let final_string = format!("{}{}", " ".repeat(size), "│");
-    format!("{}{}", text, final_string)
+    let fs = format!("{}{}", " ".repeat(size), "│");
+    format!("{}{}", text, fs)
 }
 
 fn calc_with_hostname(text: String) -> String {
     let size = 55 - text.graphemes(true).count();
-    let final_string = format!("{}{}", "─".repeat(size), "╮");
-    format!("{}{}", text, final_string)
+    let fs = format!("{}{}", "─".repeat(size), "╮");
+    format!("{}{}", text, fs)
 }
 
 fn get_environment() -> String {
