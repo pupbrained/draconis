@@ -75,16 +75,16 @@ fn update_commmand(command: String) -> (CommandKind, Pipeline) {
     }
 }
 
-async fn check_updates(json: &Lazy<serde_json::Value>) -> i32 {
+async fn check_updates() -> i32 {
     let mut total_updates = 0;
     let mut commands = Vec::new();
 
-    if json["package_managers"] == serde_json::json![null] {
+    if JSON["package_managers"] == serde_json::json![null] {
         return -1;
     }
 
-    if json["package_managers"].is_array() {
-        let pm = json["package_managers"].as_array().unwrap();
+    if JSON["package_managers"].is_array() {
+        let pm = JSON["package_managers"].as_array().unwrap();
 
         for arg in pm {
             let (kind, exec) = update_commmand(arg.to_string());
@@ -92,7 +92,7 @@ async fn check_updates(json: &Lazy<serde_json::Value>) -> i32 {
             commands.push((kind, reader));
         }
     } else {
-        let pm = &json["package_managers"];
+        let pm = &JSON["package_managers"];
         let (kind, exec) = update_commmand(pm.to_string());
         let reader = exec.stream_stdout().unwrap();
         commands.push((kind, reader));
@@ -142,21 +142,21 @@ fn count_command(command: String) -> Pipeline {
     }
 }
 
-async fn get_package_count(json: &Lazy<serde_json::Value>) -> i32 {
+async fn get_package_count() -> i32 {
     let mut total_packages = 0;
     let mut commands = Vec::new();
 
-    if json["package_managers"] == serde_json::json![null] {
+    if JSON["package_managers"] == serde_json::json![null] {
         return -1;
     }
 
-    if json["package_managers"].is_array() {
-        let pm = json["package_managers"].as_array().unwrap();
+    if JSON["package_managers"].is_array() {
+        let pm = JSON["package_managers"].as_array().unwrap();
         for arg in pm {
             commands.push(count_command(arg.to_string()).stream_stdout().unwrap());
         }
     } else {
-        let pm = &json["package_managers"];
+        let pm = &JSON["package_managers"];
         commands.push(count_command(pm[0].to_string()).stream_stdout().unwrap());
     }
 
@@ -204,8 +204,8 @@ async fn get_kernel() -> String {
     }
 }
 
-async fn get_song(json: &Lazy<serde_json::Value>) -> String {
-    if json["song"] == false {
+async fn get_song() -> String {
+    if JSON["song"] == false {
         return "".to_string();
     }
     let song = process::Command::new("playerctl")
@@ -252,25 +252,25 @@ async fn get_environment() -> String {
         .unwrap_or_else(|_| env::var(&"XDG_SESSION_DESKTOP").unwrap_or_else(|_| "".to_string()))
 }
 
-async fn get_weather(json: &Lazy<serde_json::Value>) -> String {
+async fn get_weather() -> String {
     let deg;
     let icon_code;
     let icon;
     let main;
     let temp;
-    let location = json
+    let location = JSON
         .get("location")
         .expect("Couldn't find 'location' attribute.")
         .to_string();
-    let units = json
+    let units = JSON
         .get("units")
         .expect("Couldn't find 'units' attribute.")
         .to_string();
-    let lang = json
+    let lang = JSON
         .get("lang")
         .expect("Couldn't find 'lang' attribute.")
         .to_string();
-    let api_key = json
+    let api_key = JSON
         .get("api_key")
         .expect("Couldn't find 'api_key' attribute.")
         .to_string();
@@ -318,9 +318,9 @@ async fn get_weather(json: &Lazy<serde_json::Value>) -> String {
     format!("│ {} {} {}°{}", icon, main, temp.substring(0, 2), deg)
 }
 
-async fn greeting(json: &Lazy<serde_json::Value>) -> String {
+async fn greeting() -> String {
     let dt = Local::now();
-    let name = json
+    let name = JSON
         .get("name")
         .expect("Couldn't find 'name' attribute.")
         .to_string();
@@ -335,16 +335,16 @@ async fn greeting(json: &Lazy<serde_json::Value>) -> String {
         + name.trim_matches('\"')
 }
 
-async fn get_hostname(json: &Lazy<serde_json::Value>) -> String {
-    json.get("hostname")
+async fn get_hostname() -> String {
+    JSON.get("hostname")
         .expect("Couldn't find 'hostname' attribute.")
         .to_string()
         .trim_matches('\"')
         .to_string()
 }
 
-async fn get_datetime(json: &Lazy<serde_json::Value>) -> String {
-    let time_format = json
+async fn get_datetime() -> String {
+    let time_format = JSON
         .get("time_format")
         .expect("Couldn't find 'time_format' attribute.")
         .to_string();
@@ -379,8 +379,8 @@ async fn get_datetime(json: &Lazy<serde_json::Value>) -> String {
     format!("│ {} {}, {}", time_icon, date, time.trim_start_matches(' '))
 }
 
-async fn count_updates(json: &Lazy<serde_json::Value>) -> String {
-    let count = check_updates(json).await;
+async fn count_updates() -> String {
+    let count = check_updates().await;
     let update_count;
     let updates: String = match count {
         -1 => "none",
@@ -424,18 +424,18 @@ async fn get_disk_usage() -> String {
 
 #[tokio::main]
 async fn main() {
-    let hostname_fut = spawn(get_hostname(&JSON));
-    let greeting_fut = spawn(greeting(&JSON));
-    let datetime_fut = spawn(get_datetime(&JSON));
-    let weather_fut = spawn(get_weather(&JSON));
+    let hostname_fut = spawn(get_hostname());
+    let greeting_fut = spawn(greeting());
+    let datetime_fut = spawn(get_datetime());
+    let weather_fut = spawn(get_weather());
     let release_fut = spawn(get_release());
     let kernel_fut = spawn(get_kernel());
     let memory_fut = spawn(get_memory());
     let disk_fut = spawn(get_disk_usage());
     let environment_fut = spawn(get_environment());
-    let up_count_fut = spawn(count_updates(&JSON));
-    let package_count_fut = spawn(get_package_count(&JSON));
-    let song_fut = spawn(get_song(&JSON));
+    let up_count_fut = spawn(count_updates());
+    let package_count_fut = spawn(get_package_count());
+    let song_fut = spawn(get_song());
 
     let hostname = hostname_fut.await.unwrap();
     let greeting = greeting_fut.await.unwrap();
