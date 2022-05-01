@@ -229,6 +229,7 @@ dependencies = [
  "argparse",
  "chrono",
  "futures",
+ "once_cell",
  "openweathermap",
  "serde_json",
  "subprocess",

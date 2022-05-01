@@ -8,6 +8,7 @@ use {
     systemstat::{saturating_sub_bytes, Platform, System},
     tokio::task::spawn,
     unicode_segmentation::UnicodeSegmentation,
+    once_cell::sync::Lazy,
 };
 
 #[derive(Debug)]
@@ -19,6 +20,8 @@ enum CommandKind {
     Apk,
     Dnf,
 }
+
+static JSON: Lazy<serde_json::Value> = Lazy::new(read_config);
 
 fn read_config() -> serde_json::Value {
     let mut path = format!("{}/.config/hello-rs/config.json", env::var("HOME").unwrap());
@@ -36,10 +39,9 @@ fn read_config() -> serde_json::Value {
         .expect("Failed to parse config file as a JSON.")
 }
 
-async fn check_updates() -> i32 {
+async fn check_updates(json: &Lazy<serde_json::Value>) -> i32 {
     let mut total_updates = 0;
     let mut commands = Vec::new();
-    let json = read_config();
 
     if json["package_managers"] == serde_json::json![null] {
         return -1;
@@ -48,66 +50,59 @@ async fn check_updates() -> i32 {
     if json["package_managers"].is_array() {
         let pm = json["package_managers"].as_array().unwrap();
 
-        for i in 0..pm.len() {
-            match pm[i].to_string().trim_matches('\"') {
-                "pacman" => {
-                    let reader = { Exec::cmd("checkupdates") | Exec::cmd("wc").arg("-l") }
-                        .stream_stdout()
-                        .unwrap();
-                    commands.push((CommandKind::Pacman, reader));
-                }
-                "apt" => {
-                    let reader = {
-                        Exec::cmd("apt")
-                            .args(&["list", "-u"])
-                            .stderr(Redirection::File(File::open("/dev/null").unwrap()))
-                            | Exec::cmd("tail").args(&["-n", "+2"])
-                            | Exec::cmd("wc").arg("-l")
-                    }
+        (0..pm.len()).for_each(|i| match pm[i].to_string().trim_matches('\"') {
+            "pacman" => {
+                let reader = { Exec::cmd("checkupdates") | Exec::cmd("wc").arg("-l") }
                     .stream_stdout()
                     .unwrap();
-                    commands.push((CommandKind::Apt, reader));
-                }
-                "xbps" => {
-                    let reader =
-                        { Exec::cmd("xbps-install").arg("-Sun") | Exec::cmd("wc").arg("-l") }
-                            .stream_stdout()
-                            .unwrap();
-                    commands.push((CommandKind::Xbps, reader));
-                }
-                "portage" => {
-                    let reader = {
-                        Exec::cmd("eix").args(&[
-                            "-u",
-                            "--format",
-                            "'<installedversions:nameversion>'",
-                        ]) | Exec::cmd("tail").arg("-1")
-                            | Exec::cmd("cut").args(&["-d", " ", "-f2"])
-                    }
-                    .stream_stdout()
-                    .unwrap();
-                    commands.push((CommandKind::Portage, reader));
-                }
-                "apk" => {
-                    let reader =
-                        { Exec::cmd("apk").args(&["-u", "list"]) | Exec::cmd("wc").arg("-l") }
-                            .stream_stdout()
-                            .unwrap();
-                    commands.push((CommandKind::Apk, reader));
-                }
-                "dnf" => {
-                    let reader = {
-                        Exec::cmd("dnf").arg("check-update")
-                            | Exec::cmd("tail").args(&["-n", "+3"])
-                            | Exec::cmd("wc").arg("-l")
-                    }
-                    .stream_stdout()
-                    .unwrap();
-                    commands.push((CommandKind::Dnf, reader));
-                }
-                _ => (),
+                commands.push((CommandKind::Pacman, reader));
             }
-        }
+            "apt" => {
+                let reader = {
+                    Exec::cmd("apt")
+                        .args(&["list", "-u"])
+                        .stderr(Redirection::File(File::open("/dev/null").unwrap()))
+                        | Exec::cmd("tail").args(&["-n", "+2"])
+                        | Exec::cmd("wc").arg("-l")
+                }
+                .stream_stdout()
+                .unwrap();
+                commands.push((CommandKind::Apt, reader));
+            }
+            "xbps" => {
+                let reader = { Exec::cmd("xbps-install").arg("-Sun") | Exec::cmd("wc").arg("-l") }
+                    .stream_stdout()
+                    .unwrap();
+                commands.push((CommandKind::Xbps, reader));
+            }
+            "portage" => {
+                let reader = {
+                    Exec::cmd("eix").args(&["-u", "--format", "'<installedversions:nameversion>'"])
+                        | Exec::cmd("tail").arg("-1")
+                        | Exec::cmd("cut").args(&["-d", " ", "-f2"])
+                }
+                .stream_stdout()
+                .unwrap();
+                commands.push((CommandKind::Portage, reader));
+            }
+            "apk" => {
+                let reader = { Exec::cmd("apk").args(&["-u", "list"]) | Exec::cmd("wc").arg("-l") }
+                    .stream_stdout()
+                    .unwrap();
+                commands.push((CommandKind::Apk, reader));
+            }
+            "dnf" => {
+                let reader = {
+                    Exec::cmd("dnf").arg("check-update")
+                        | Exec::cmd("tail").args(&["-n", "+3"])
+                        | Exec::cmd("wc").arg("-l")
+                }
+                .stream_stdout()
+                .unwrap();
+                commands.push((CommandKind::Dnf, reader));
+            }
+            _ => (),
+        });
     } else {
         let pm = &json["package_managers"];
         match pm.to_string().trim_matches('\"') {
@@ -184,10 +179,9 @@ async fn check_updates() -> i32 {
     total_updates
 }
 
-async fn get_package_count() -> i32 {
+async fn get_package_count(json: &Lazy<serde_json::Value>) -> i32 {
     let mut total_packages = 0;
     let mut commands = Vec::new();
-    let json = read_config();
 
     if json["package_managers"] == serde_json::json![null] {
         return -1;
@@ -195,56 +189,53 @@ async fn get_package_count() -> i32 {
 
     if json["package_managers"].is_array() {
         let pm = json["package_managers"].as_array().unwrap();
-        for i in 0..pm.len() {
-            match pm[i].to_string().trim_matches('\"') {
-                "pacman" => {
-                    let reader = { Exec::cmd("pacman").arg("-Q") | Exec::cmd("wc").arg("-l") }
-                        .stream_stdout()
-                        .unwrap();
-                    commands.push(reader);
-                }
-                "apt" => {
-                    let reader = {
-                        Exec::cmd("dpkg-query").arg("-l")
-                            | Exec::cmd("grep").arg("ii")
-                            | Exec::cmd("wc").arg("-l")
-                    }
+        (0..pm.len()).for_each(|i| match pm[i].to_string().trim_matches('\"') {
+            "pacman" => {
+                let reader = { Exec::cmd("pacman").arg("-Q") | Exec::cmd("wc").arg("-l") }
                     .stream_stdout()
                     .unwrap();
-                    commands.push(reader);
-                }
-                "xbps" => {
-                    let reader = { Exec::cmd("xbps-query").arg("-l") | Exec::cmd("wc").arg("-l") }
-                        .stream_stdout()
-                        .unwrap();
-                    commands.push(reader);
-                }
-                "portage" => {
-                    let reader =
-                        { Exec::cmd("eix-installed").arg("-a") | Exec::cmd("wc").arg("-l") }
-                            .stream_stdout()
-                            .unwrap();
-                    commands.push(reader);
-                }
-                "apk" => {
-                    let reader = { Exec::cmd("apk").arg("info") | Exec::cmd("wc").arg("-l") }
-                        .stream_stdout()
-                        .unwrap();
-                    commands.push(reader);
-                }
-                "dnf" => {
-                    let reader = {
-                        Exec::cmd("dnf").args(&["list", "installed"])
-                            | Exec::cmd("tail").args(&["-n", "+2"])
-                            | Exec::cmd("wc").arg("-l")
-                    }
-                    .stream_stdout()
-                    .unwrap();
-                    commands.push(reader);
-                }
-                _ => (),
+                commands.push(reader);
             }
-        }
+            "apt" => {
+                let reader = {
+                    Exec::cmd("dpkg-query").arg("-l")
+                        | Exec::cmd("grep").arg("ii")
+                        | Exec::cmd("wc").arg("-l")
+                }
+                .stream_stdout()
+                .unwrap();
+                commands.push(reader);
+            }
+            "xbps" => {
+                let reader = { Exec::cmd("xbps-query").arg("-l") | Exec::cmd("wc").arg("-l") }
+                    .stream_stdout()
+                    .unwrap();
+                commands.push(reader);
+            }
+            "portage" => {
+                let reader = { Exec::cmd("eix-installed").arg("-a") | Exec::cmd("wc").arg("-l") }
+                    .stream_stdout()
+                    .unwrap();
+                commands.push(reader);
+            }
+            "apk" => {
+                let reader = { Exec::cmd("apk").arg("info") | Exec::cmd("wc").arg("-l") }
+                    .stream_stdout()
+                    .unwrap();
+                commands.push(reader);
+            }
+            "dnf" => {
+                let reader = {
+                    Exec::cmd("dnf").args(&["list", "installed"])
+                        | Exec::cmd("tail").args(&["-n", "+2"])
+                        | Exec::cmd("wc").arg("-l")
+                }
+                .stream_stdout()
+                .unwrap();
+                commands.push(reader);
+            }
+            _ => (),
+        });
     } else {
         let pm = &json["package_managers"];
         match pm[0].to_string().trim_matches('\"') {
@@ -334,8 +325,7 @@ async fn get_kernel() -> String {
     }
 }
 
-async fn get_song() -> String {
-    let json = read_config();
+async fn get_song(json: &Lazy<serde_json::Value>) -> String {
     if json["song"] == false {
         return "".to_string();
     }
@@ -380,16 +370,15 @@ async fn calc_with_hostname(text: String) -> String {
 
 async fn get_environment() -> String {
     env::var::<String>(ToString::to_string(&"XDG_CURRENT_DESKTOP"))
-        .unwrap_or(env::var(&"XDG_SESSION_DESKTOP").unwrap_or("".to_string()))
+        .unwrap_or_else(|_| env::var(&"XDG_SESSION_DESKTOP").unwrap_or_else(|_| "".to_string()))
 }
 
-async fn get_weather() -> String {
+async fn get_weather(json: &Lazy<serde_json::Value>) -> String {
     let deg;
     let icon_code;
     let icon;
     let main;
     let temp;
-    let json = read_config();
     let location = json
         .get("location")
         .expect("Couldn't find 'location' attribute.")
@@ -450,9 +439,8 @@ async fn get_weather() -> String {
     format!("│ {} {} {}°{}", icon, main, temp.substring(0, 2), deg)
 }
 
-async fn greeting() -> String {
+async fn greeting(json: &Lazy<serde_json::Value>) -> String {
     let dt = Local::now();
-    let json = read_config();
     let name = json
         .get("name")
         .expect("Couldn't find 'name' attribute.")
@@ -468,8 +456,7 @@ async fn greeting() -> String {
         + name.trim_matches('\"')
 }
 
-async fn get_hostname() -> String {
-    let json = read_config();
+async fn get_hostname(json: &Lazy<serde_json::Value>) -> String {
     json.get("hostname")
         .expect("Couldn't find 'hostname' attribute.")
         .to_string()
@@ -477,9 +464,7 @@ async fn get_hostname() -> String {
         .to_string()
 }
 
-async fn get_datetime() -> String {
-    let time_icon;
-    let json = read_config();
+async fn get_datetime(json: &Lazy<serde_json::Value>) -> String {
     let time_format = json
         .get("time_format")
         .expect("Couldn't find 'time_format' attribute.")
@@ -497,7 +482,7 @@ async fn get_datetime() -> String {
         "24h" => dt.format("%H:%M").to_string(),
         _ => "off".to_string(),
     };
-    time_icon = match dt.hour() {
+    let time_icon = match dt.hour() {
         0 | 12 => "🕛",
         1 | 13 => "🕐",
         2 | 14 => "🕑",
@@ -515,8 +500,8 @@ async fn get_datetime() -> String {
     format!("│ {} {}, {}", time_icon, date, time.trim_start_matches(' '))
 }
 
-async fn count_updates() -> String {
-    let count = check_updates().await;
+async fn count_updates(json: &Lazy<serde_json::Value>) -> String {
+    let count = check_updates(json).await;
     let update_count;
     let updates: String = match count {
         -1 => "none",
@@ -543,7 +528,7 @@ async fn count_updates() -> String {
 async fn get_memory() -> String {
     let sys = System::new();
     match sys.memory() {
-        Ok(mem) => format!("{} Used", saturating_sub_bytes(mem.total, mem.free)).to_string(),
+        Ok(mem) => format!("{} Used", saturating_sub_bytes(mem.total, mem.free)),
         Err(x) => panic!("Could not get memory because: {}", x),
     }
 }
@@ -552,7 +537,7 @@ async fn get_disk_usage() -> String {
     let sys = System::new();
     match sys.mount_at("/") {
         Ok(disk) => {
-            format!("{} Free", disk.free.to_string())
+            format!("{} Free", disk.free)
         }
         Err(x) => panic!("Could not get disk usage because: {}", x),
     }
@@ -560,18 +545,18 @@ async fn get_disk_usage() -> String {
 
 #[tokio::main]
 async fn main() {
-    let hostname_fut = spawn(get_hostname());
-    let greeting_fut = spawn(greeting());
-    let datetime_fut = spawn(get_datetime());
-    let weather_fut = spawn(get_weather());
+    let hostname_fut = spawn(get_hostname(&JSON));
+    let greeting_fut = spawn(greeting(&JSON));
+    let datetime_fut = spawn(get_datetime(&JSON));
+    let weather_fut = spawn(get_weather(&JSON));
     let release_fut = spawn(get_release());
     let kernel_fut = spawn(get_kernel());
     let memory_fut = spawn(get_memory());
     let disk_fut = spawn(get_disk_usage());
     let environment_fut = spawn(get_environment());
-    let up_count_fut = spawn(count_updates());
-    let package_count_fut = spawn(get_package_count());
-    let song_fut = spawn(get_song());
+    let up_count_fut = spawn(count_updates(&JSON));
+    let package_count_fut = spawn(get_package_count(&JSON));
+    let song_fut = spawn(get_song(&JSON));
 
     let hostname = hostname_fut.await.unwrap();
     let greeting = greeting_fut.await.unwrap();
@@ -607,7 +592,7 @@ async fn main() {
         ),
     }
 
-    if up_count != "│ none".to_string() {
+    if up_count != *"│ none".to_string() {
         println!("{}", calc_whitespace(up_count).await);
     }
 
