@@ -410,32 +410,48 @@ fn get_disk_usage() -> String {
 }
 
 fn main() {
-    let hostname = get_hostname();
-    let greeting = greeting();
-    let datetime = get_datetime();
-    let weather = get_weather();
-    let release = get_release();
-    let kernel = get_kernel();
-    let memory = get_memory();
-    let disk = get_disk_usage();
-    let environment = get_environment();
-    let up_count = count_updates();
-    let package_count = get_package_count();
-    let song = get_song();
+    let hostname = std::thread::spawn(get_hostname);
+    let greeting = std::thread::spawn(greeting);
+    let datetime = std::thread::spawn(get_datetime);
+    let weather = std::thread::spawn(get_weather);
+    let release = std::thread::spawn(get_release);
+    let kernel = std::thread::spawn(get_kernel);
+    let memory = std::thread::spawn(get_memory);
+    let disk = std::thread::spawn(get_disk_usage);
+    let environment = std::thread::spawn(get_environment);
+    let up_count = std::thread::spawn(count_updates);
+    let package_count = std::thread::spawn(get_package_count);
+    let song = std::thread::spawn(get_song);
 
     println!(
         "{}",
-        calc_with_hostname(format!("╭─\x1b[32m{}\x1b[0m", hostname))
+        calc_with_hostname(format!("╭─\x1b[32m{}\x1b[0m", hostname.join().unwrap()))
     );
 
-    println!("{}", calc_whitespace(format!("│ {}!", greeting)));
-    println!("{}", calc_whitespace(datetime));
-    println!("{}", calc_whitespace(weather));
-    println!("{}", calc_whitespace(format!("│ 💻 {}", release)));
-    println!("{}", calc_whitespace(format!("│ 🫀 {}", kernel)));
-    println!("{}", calc_whitespace(format!("│ 🧠 {}", memory)));
-    println!("{}", calc_whitespace(format!("│ 💾 {}", disk)));
+    println!(
+        "{}",
+        calc_whitespace(format!("│ {}!", greeting.join().unwrap()))
+    );
+    println!("{}", calc_whitespace(datetime.join().unwrap()));
+    println!("{}", calc_whitespace(weather.join().unwrap()));
+    println!(
+        "{}",
+        calc_whitespace(format!("│ 💻 {}", release.join().unwrap()))
+    );
+    println!(
+        "{}",
+        calc_whitespace(format!("│ 🫀 {}", kernel.join().unwrap()))
+    );
+    println!(
+        "{}",
+        calc_whitespace(format!("│ 🧠 {}", memory.join().unwrap()))
+    );
+    println!(
+        "{}",
+        calc_whitespace(format!("│ 💾 {}", disk.join().unwrap()))
+    );
 
+    let environment = environment.join().unwrap();
     match environment.as_ref() {
         "" => (),
         _ => println!(
@@ -444,10 +460,12 @@ fn main() {
         ),
     }
 
+    let up_count = up_count.join().unwrap();
     if up_count != *"│ none".to_string() {
         println!("{}", calc_whitespace(up_count));
     }
 
+    let package_count = package_count.join().unwrap();
     match package_count {
         -1 => (),
         0 => println!("{}", calc_whitespace("│ 📦 No packages".to_string())),
@@ -458,6 +476,7 @@ fn main() {
         ),
     }
 
+    let song = song.join().unwrap();
     match song.as_ref() {
         "" => (),
         _ => println!(
