@@ -4,13 +4,18 @@ use {
     mpris::PlayerFinder,
     once_cell::sync::Lazy,
     openweathermap::weather,
-    std::{env, fs::File, process::Stdio},
+    std::{env, fs::File, process::Stdio, time::Instant},
     substring::Substring,
     sys_info::{hostname, linux_os_release, os_release},
     systemstat::{saturating_sub_bytes, Platform, System},
     tokio::{
         io::{AsyncBufReadExt, BufReader},
         process::{ChildStdout, Command},
+    },
+    tracing_subscriber::{
+        fmt::{self, format::FmtSpan},
+        prelude::*,
+        EnvFilter,
     },
     unicode_segmentation::UnicodeSegmentation,
     whoami::username,
@@ -199,6 +204,7 @@ async fn do_installed_counting(arg: String) -> i32 {
     }
 }
 
+#[tracing::instrument]
 async fn get_package_count() -> i32 {
     if JSON["package_managers"] == serde_json::json![null] {
         return -1;
@@ -226,6 +232,7 @@ async fn get_package_count() -> i32 {
     }
 }
 
+#[tracing::instrument]
 fn get_release_blocking() -> String {
     let rel = linux_os_release().unwrap().pretty_name.unwrap(); // this performs a blocking read of /etc/os-release
 
@@ -239,6 +246,7 @@ fn get_release_blocking() -> String {
     }
 }
 
+#[tracing::instrument]
 fn get_kernel_blocking() -> String {
     let kernel = os_release().unwrap(); // this performs a blocking read of /proc/sys/kernel/osrelease
     if kernel.len() > 41 {
@@ -248,6 +256,7 @@ fn get_kernel_blocking() -> String {
     }
 }
 
+#[tracing::instrument]
 fn get_song() -> String {
     if JSON["song"] == false {
         return "".to_string();
@@ -292,11 +301,13 @@ fn calc_with_hostname(text: String) -> String {
     format!("{}{}", text, fs)
 }
 
+#[tracing::instrument]
 fn get_environment() -> String {
     env::var::<String>(ToString::to_string(&"XDG_CURRENT_DESKTOP"))
         .unwrap_or_else(|_| env::var(&"XDG_SESSION_DESKTOP").unwrap_or_else(|_| "".to_string()))
 }
 
+#[tracing::instrument]
 async fn get_weather() -> String {
     let deg;
     let icon_code;
@@ -365,6 +376,7 @@ async fn get_weather() -> String {
     format!("│ {} {} {}°{}", icon, main, temp.substring(0, 2), deg)
 }
 
+#[tracing::instrument]
 fn greeting() -> String {
     let name = JSON
         .get("name")
@@ -381,6 +393,7 @@ fn greeting() -> String {
         + name.trim_matches('\"')
 }
 
+#[tracing::instrument]
 fn get_hostname() -> String {
     if JSON["hostname"] == serde_json::json![null] {
         return format!("{}@{}", username(), hostname().unwrap());
@@ -392,6 +405,7 @@ fn get_hostname() -> String {
         .to_string()
 }
 
+#[tracing::instrument]
 fn get_datetime() -> String {
     let dt = Local::now();
     let day = dt.format("%e").to_string();
@@ -429,6 +443,7 @@ fn get_datetime() -> String {
     format!("│ {} {}, {}", time_icon, date, time.trim_start_matches(' '))
 }
 
+#[tracing::instrument]
 async fn count_updates() -> String {
     let count = check_updates().await;
     let update_count;
@@ -454,6 +469,7 @@ async fn count_updates() -> String {
     format!("│ {}", updates)
 }
 
+#[tracing::instrument]
 fn get_memory() -> String {
     match System::new().memory() {
         Ok(mem) => format!("{} Used", saturating_sub_bytes(mem.total, mem.free)),
@@ -461,6 +477,7 @@ fn get_memory() -> String {
     }
 }
 
+#[tracing::instrument]
 fn get_disk_usage() -> String {
     match System::new().mount_at("/") {
         Ok(disk) => {
@@ -472,6 +489,19 @@ fn get_disk_usage() -> String {
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::registry()
+        .with(
+            fmt::layer()
+                .pretty()
+                .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE),
+        )
+        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("warn")))
+        .init();
+
+    tracing::info!("Running");
+
+    let time = Instant::now();
+
     Lazy::force(&JSON);
 
     // These do not need to be spawned in any way, they are nonblocking
@@ -499,6 +529,11 @@ async fn main() {
 
     let release = release.await.unwrap();
     let kernel = kernel.await.unwrap();
+
+    tracing::info!(
+        "Finished collecting data in {:.3}",
+        time.elapsed().as_secs_f32()
+    );
 
     println!(
         "{}",
