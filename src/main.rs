@@ -1,19 +1,20 @@
 use std::process::Stdio;
 
+use tokio::process::ChildStdout;
+
 use {
     argparse::{ArgumentParser, Store},
     chrono::prelude::{Local, Timelike},
     once_cell::sync::Lazy,
-    openweathermap::blocking::weather,
-    std::{
-        env,
-        fs::File,
-        io::{BufRead, BufReader},
-        process::Command,
-    },
+    openweathermap::weather,
+    std::{env, fs::File},
     substring::Substring,
     sys_info::{hostname, linux_os_release, os_release},
     systemstat::{saturating_sub_bytes, Platform, System},
+    tokio::{
+        io::{AsyncBufReadExt, BufReader},
+        process::Command,
+    },
     unicode_segmentation::UnicodeSegmentation,
     whoami::username,
 };
@@ -79,7 +80,27 @@ fn check_update_commmand(command: String) -> (CommandKind, Command) {
     }
 }
 
-fn do_update_counting(arg: String) -> i32 {
+async fn count_lines(skip: i32, mut reader: BufReader<ChildStdout>) -> i32 {
+    let mut total = 0;
+    let mut s = String::new();
+
+    loop {
+        let n = reader.read_line(&mut s).await.unwrap();
+        if n == 0 {
+            break;
+        }
+        s.clear();
+        total += 1;
+    }
+
+    if total > skip {
+        total - skip
+    } else {
+        0
+    }
+}
+
+async fn do_update_counting(arg: String) -> i32 {
     let (kind, mut command) = check_update_commmand(arg);
     let reader = command
         .stderr(Stdio::null())
@@ -92,30 +113,14 @@ fn do_update_counting(arg: String) -> i32 {
 
     let fs = BufReader::new(reader);
     match kind {
-        CommandKind::Apt => {
-            let num = fs.lines().skip(2).count().to_string();
-            num.parse::<i32>().unwrap()
-        }
-        CommandKind::Portage => {
-            let num = fs.lines().count().to_string();
-            if num.trim_end_matches('\n') != "matches" {
-                num.trim_end_matches('\n').parse::<i32>().unwrap_or(1)
-            } else {
-                0
-            }
-        }
-        CommandKind::Dnf => {
-            let num = fs.lines().skip(3).count().to_string();
-            num.parse::<i32>().unwrap()
-        }
-        _ => {
-            let num = fs.lines().count().to_string();
-            num.trim_end_matches('\n').parse::<i32>().unwrap()
-        }
+        CommandKind::Apt => count_lines(2, fs).await,
+        CommandKind::Portage => count_lines(0, fs).await,
+        CommandKind::Dnf => count_lines(3, fs).await,
+        _ => count_lines(0, fs).await,
     }
 }
 
-fn check_updates() -> i32 {
+async fn check_updates() -> i32 {
     if JSON["package_managers"] == serde_json::json![null] {
         return -1;
     }
@@ -125,20 +130,20 @@ fn check_updates() -> i32 {
         let mut handles = Vec::new();
 
         for arg in pm {
-            let handle = std::thread::spawn(move || do_update_counting(arg.to_string()));
+            let handle = tokio::spawn(do_update_counting(arg.to_string()));
             handles.push(handle);
         }
 
         let mut total_updates = 0;
 
         for handle in handles {
-            total_updates += handle.join().unwrap();
+            total_updates += handle.await.unwrap();
         }
 
         total_updates
     } else {
         let pm = &JSON["package_managers"];
-        do_update_counting(pm.to_string())
+        do_update_counting(pm.to_string()).await
     }
 }
 
@@ -178,7 +183,7 @@ fn check_installed_command(command: String) -> (CommandKind, Command) {
     }
 }
 
-fn do_installed_counting(arg: String) -> i32 {
+async fn do_installed_counting(arg: String) -> i32 {
     let (kind, mut command) = check_installed_command(arg);
     let reader = command
         .stderr(Stdio::null())
@@ -191,26 +196,13 @@ fn do_installed_counting(arg: String) -> i32 {
 
     let fs = BufReader::new(reader);
     match kind {
-        CommandKind::Apt => {
-            let num = fs.lines().skip(2).count().to_string();
-            num.parse::<i32>().unwrap()
-        }
-        CommandKind::Portage => {
-            let num = fs.lines().count().to_string();
-            if num.trim_end_matches('\n') != "matches" {
-                num.trim_end_matches('\n').parse::<i32>().unwrap_or(1)
-            } else {
-                0
-            }
-        }
-        _ => {
-            let num = fs.lines().count().to_string();
-            num.trim_end_matches('\n').parse::<i32>().unwrap()
-        }
+        CommandKind::Apt => count_lines(2, fs).await,
+        CommandKind::Portage => count_lines(0, fs).await,
+        _ => count_lines(0, fs).await,
     }
 }
 
-fn get_package_count() -> i32 {
+async fn get_package_count() -> i32 {
     if JSON["package_managers"] == serde_json::json![null] {
         return -1;
     }
@@ -220,25 +212,25 @@ fn get_package_count() -> i32 {
         let mut handles = Vec::new();
 
         for arg in pm {
-            let handle = std::thread::spawn(move || do_installed_counting(arg.to_string()));
+            let handle = tokio::spawn(do_installed_counting(arg.to_string()));
             handles.push(handle);
         }
 
         let mut total_packages = 0;
 
         for handle in handles {
-            total_packages += handle.join().unwrap();
+            total_packages += handle.await.unwrap();
         }
 
         total_packages
     } else {
         let pm = &JSON["package_managers"];
-        do_installed_counting(pm.to_string())
+        do_installed_counting(pm.to_string()).await
     }
 }
 
-fn get_release() -> String {
-    let rel = linux_os_release().unwrap().pretty_name.unwrap();
+fn get_release_blocking() -> String {
+    let rel = linux_os_release().unwrap().pretty_name.unwrap(); // this performs a blocking read of /etc/os-release
 
     if rel.len() > 41 {
         format!("{}...", rel.trim_matches('\"').substring(0, 37))
@@ -250,8 +242,8 @@ fn get_release() -> String {
     }
 }
 
-fn get_kernel() -> String {
-    let kernel = os_release().unwrap();
+fn get_kernel_blocking() -> String {
+    let kernel = os_release().unwrap(); // this performs a blocking read of /proc/sys/kernel/osrelease
     if kernel.len() > 41 {
         format!("{}...", kernel.substring(0, 37))
     } else {
@@ -259,13 +251,14 @@ fn get_kernel() -> String {
     }
 }
 
-fn get_song() -> String {
+async fn get_song() -> String {
     if JSON["song"] == false {
         return "".to_string();
     }
     let song = Command::new("playerctl")
         .args(&["metadata", "-f", "{{ artist }} - {{ title }}"])
         .output()
+        .await
         .unwrap();
     let songerr = String::from_utf8_lossy(&song.stderr);
     let songname = String::from_utf8_lossy(&song.stdout);
@@ -305,7 +298,7 @@ fn get_environment() -> String {
         .unwrap_or_else(|_| env::var(&"XDG_SESSION_DESKTOP").unwrap_or_else(|_| "".to_string()))
 }
 
-fn get_weather() -> String {
+async fn get_weather() -> String {
     let deg;
     let icon_code;
     let icon;
@@ -332,7 +325,9 @@ fn get_weather() -> String {
         units.trim_matches('\"'),
         lang.trim_matches('\"'),
         api_key.trim_matches('\"'),
-    ) {
+    )
+    .await
+    {
         Ok(current) => {
             deg = if units.trim_matches('\"') == "imperial" {
                 "F"
@@ -435,8 +430,8 @@ fn get_datetime() -> String {
     format!("│ {} {}, {}", time_icon, date, time.trim_start_matches(' '))
 }
 
-fn count_updates() -> String {
-    let count = check_updates();
+async fn count_updates() -> String {
+    let count = check_updates().await;
     let update_count;
     let updates: String = match count {
         -1 => "none",
@@ -476,19 +471,35 @@ fn get_disk_usage() -> String {
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
+    Lazy::force(&JSON);
+
+    // These do not need to be spawned in any way, they are nonblocking
     let hostname = get_hostname();
     let greeting = greeting();
     let datetime = get_datetime();
-    let weather = get_weather();
-    let release = get_release();
-    let kernel = get_kernel();
     let memory = get_memory();
     let disk = get_disk_usage();
     let environment = get_environment();
-    let up_count = count_updates();
-    let package_count = get_package_count();
-    let song = get_song();
+
+    // These are proper async functions
+    let weather = tokio::spawn(get_weather());
+    let up_count = tokio::spawn(count_updates());
+    let package_count = tokio::spawn(get_package_count());
+    let song = tokio::spawn(get_song());
+
+    // These are functions that block
+    let release = tokio::task::spawn_blocking(get_release_blocking);
+    let kernel = tokio::task::spawn_blocking(get_kernel_blocking);
+
+    let weather = weather.await.unwrap();
+    let up_count = up_count.await.unwrap();
+    let package_count = package_count.await.unwrap();
+    let song = song.await.unwrap();
+
+    let release = release.await.unwrap();
+    let kernel = kernel.await.unwrap();
 
     println!(
         "{}",
