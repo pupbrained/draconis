@@ -219,6 +219,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "file_diff"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "31a7a908b8f32538a2143e59a6e4e2508988832d5d4d6f7c156b3cbc762643a5"
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -401,6 +407,7 @@ version = "2.1.0"
 dependencies = [
  "argparse",
  "chrono",
+ "file_diff",
  "mpris",
  "once_cell",
  "openweathermap",

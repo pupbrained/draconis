@@ -1,8 +1,7 @@
-use whoami::realname;
-
 use {
     argparse::{ArgumentParser, Store},
     chrono::prelude::{Local, Timelike},
+    file_diff::diff_files,
     mpris::PlayerFinder,
     once_cell::sync::Lazy,
     openweathermap::weather,
@@ -20,7 +19,7 @@ use {
         EnvFilter,
     },
     unicode_segmentation::UnicodeSegmentation,
-    whoami::username,
+    whoami::{realname, username},
 };
 
 #[derive(Debug)]
@@ -47,8 +46,23 @@ fn read_config() -> serde_json::Value {
         );
         ap.parse_args_or_exit();
     }
-    serde_json::from_reader(File::open(path).expect("Failed to open config file."))
-        .expect("Failed to parse config file as a JSON.")
+    let file = File::open(path);
+    let mut finalfile = match file {
+        Err(_) => File::open("/dev/null").unwrap(),
+        _ => file.unwrap(),
+    };
+    if !diff_files(&mut File::open("/dev/null").unwrap(), &mut finalfile) {
+        serde_json::from_reader(
+            File::open(format!(
+                "{}/.config/hello-rs/config.json",
+                env::var("HOME").unwrap()
+            ))
+            .unwrap(),
+        )
+        .unwrap()
+    } else {
+        serde_json::from_str(r#"{ }"#).unwrap()
+    }
 }
 
 fn check_update_commmand(command: String) -> (CommandKind, Command) {
