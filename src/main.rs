@@ -1,7 +1,8 @@
+use std::io::ErrorKind;
+
 use {
     argparse::{ArgumentParser, Store},
     chrono::prelude::{Local, Timelike},
-    file_diff::diff_files,
     mpris::PlayerFinder,
     once_cell::sync::Lazy,
     openweathermap::weather,
@@ -46,23 +47,14 @@ fn read_config() -> serde_json::Value {
         );
         ap.parse_args_or_exit();
     }
-    let file = File::open(path);
-    let mut finalfile = match file {
-        Err(_) => File::open("/dev/null").unwrap(),
-        _ => file.unwrap(),
+
+    let file = match File::open(path) {
+        Err(e) if e.kind() == ErrorKind::NotFound => return serde_json::json!({}),
+        Err(e) => panic!("{}", e),
+        Ok(file) => file,
     };
-    if !diff_files(&mut File::open("/dev/null").unwrap(), &mut finalfile) {
-        serde_json::from_reader(
-            File::open(format!(
-                "{}/.config/hello-rs/config.json",
-                env::var("HOME").unwrap()
-            ))
-            .unwrap(),
-        )
-        .unwrap()
-    } else {
-        serde_json::from_str(r#"{ }"#).unwrap()
-    }
+
+    serde_json::from_reader(file).unwrap()
 }
 
 fn check_update_commmand(command: String) -> (CommandKind, Command) {
