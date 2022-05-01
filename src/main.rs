@@ -175,7 +175,7 @@ async fn get_package_count() -> i32 {
     total_packages
 }
 
-async fn get_release() -> String {
+fn get_release() -> String {
     let rel = Exec::cmd("lsb_release")
         .args(&["-s", "-d"])
         .capture()
@@ -191,7 +191,7 @@ async fn get_release() -> String {
     }
 }
 
-async fn get_kernel() -> String {
+fn get_kernel() -> String {
     let uname = Exec::cmd("uname")
         .arg("-sr")
         .capture()
@@ -204,7 +204,7 @@ async fn get_kernel() -> String {
     }
 }
 
-async fn get_song() -> String {
+fn get_song() -> String {
     if JSON["song"] == false {
         return "".to_string();
     }
@@ -227,7 +227,7 @@ async fn get_song() -> String {
     }
 }
 
-async fn upper_first(s: String) -> String {
+fn upper_first(s: String) -> String {
     let mut c = s.chars();
     match c.next() {
         None => String::new(),
@@ -235,24 +235,24 @@ async fn upper_first(s: String) -> String {
     }
 }
 
-async fn calc_whitespace(text: String) -> String {
+fn calc_whitespace(text: String) -> String {
     let size = 45 - text.graphemes(true).count();
     let final_string = format!("{}{}", " ".repeat(size), "│");
     format!("{}{}", text, final_string)
 }
 
-async fn calc_with_hostname(text: String) -> String {
+fn calc_with_hostname(text: String) -> String {
     let size = 55 - text.graphemes(true).count();
     let final_string = format!("{}{}", "─".repeat(size), "╮");
     format!("{}{}", text, final_string)
 }
 
-async fn get_environment() -> String {
+fn get_environment() -> String {
     env::var::<String>(ToString::to_string(&"XDG_CURRENT_DESKTOP"))
         .unwrap_or_else(|_| env::var(&"XDG_SESSION_DESKTOP").unwrap_or_else(|_| "".to_string()))
 }
 
-async fn get_weather() -> String {
+fn get_weather() -> String {
     let deg;
     let icon_code;
     let icon;
@@ -318,7 +318,7 @@ async fn get_weather() -> String {
     format!("│ {} {} {}°{}", icon, main, temp.substring(0, 2), deg)
 }
 
-async fn greeting() -> String {
+fn greeting() -> String {
     let dt = Local::now();
     let name = JSON
         .get("name")
@@ -335,7 +335,7 @@ async fn greeting() -> String {
         + name.trim_matches('\"')
 }
 
-async fn get_hostname() -> String {
+fn get_hostname() -> String {
     JSON.get("hostname")
         .expect("Couldn't find 'hostname' attribute.")
         .to_string()
@@ -343,7 +343,7 @@ async fn get_hostname() -> String {
         .to_string()
 }
 
-async fn get_datetime() -> String {
+fn get_datetime() -> String {
     let time_format = JSON
         .get("time_format")
         .expect("Couldn't find 'time_format' attribute.")
@@ -404,7 +404,7 @@ async fn count_updates() -> String {
     format!("│ {}", updates)
 }
 
-async fn get_memory() -> String {
+fn get_memory() -> String {
     let sys = System::new();
     match sys.memory() {
         Ok(mem) => format!("{} Used", saturating_sub_bytes(mem.total, mem.free)),
@@ -412,7 +412,7 @@ async fn get_memory() -> String {
     }
 }
 
-async fn get_disk_usage() -> String {
+fn get_disk_usage() -> String {
     let sys = System::new();
     match sys.mount_at("/") {
         Ok(disk) => {
@@ -424,18 +424,18 @@ async fn get_disk_usage() -> String {
 
 #[tokio::main]
 async fn main() {
-    let hostname_fut = spawn(get_hostname());
-    let greeting_fut = spawn(greeting());
-    let datetime_fut = spawn(get_datetime());
-    let weather_fut = spawn(get_weather());
-    let release_fut = spawn(get_release());
-    let kernel_fut = spawn(get_kernel());
-    let memory_fut = spawn(get_memory());
-    let disk_fut = spawn(get_disk_usage());
-    let environment_fut = spawn(get_environment());
+    let hostname_fut = spawn_blocking(get_hostname);
+    let greeting_fut = spawn_blocking(greeting);
+    let datetime_fut = spawn_blocking(get_datetime);
+    let weather_fut = spawn_blocking(get_weather);
+    let release_fut = spawn_blocking(get_release);
+    let kernel_fut = spawn_blocking(get_kernel);
+    let memory_fut = spawn_blocking(get_memory);
+    let disk_fut = spawn_blocking(get_disk_usage);
+    let environment_fut = spawn_blocking(get_environment);
     let up_count_fut = spawn(count_updates());
     let package_count_fut = spawn(get_package_count());
-    let song_fut = spawn(get_song());
+    let song_fut = spawn_blocking(get_song);
 
     let hostname = hostname_fut.await.unwrap();
     let greeting = greeting_fut.await.unwrap();
@@ -452,36 +452,36 @@ async fn main() {
 
     println!(
         "{}",
-        calc_with_hostname(format!("╭─\x1b[32m{}\x1b[0m", hostname)).await
+        calc_with_hostname(format!("╭─\x1b[32m{}\x1b[0m", hostname))
     );
 
-    println!("{}", calc_whitespace(format!("│ {}!", greeting)).await);
-    println!("{}", calc_whitespace(datetime).await);
-    println!("{}", calc_whitespace(weather).await);
-    println!("{}", calc_whitespace(format!("│ 💻 {}", release)).await);
-    println!("{}", calc_whitespace(format!("│ 🫀 {}", kernel)).await);
-    println!("{}", calc_whitespace(format!("│ 🧠 {}", memory)).await);
-    println!("{}", calc_whitespace(format!("│ 💾 {}", disk)).await);
+    println!("{}", calc_whitespace(format!("│ {}!", greeting)));
+    println!("{}", calc_whitespace(datetime));
+    println!("{}", calc_whitespace(weather));
+    println!("{}", calc_whitespace(format!("│ 💻 {}", release)));
+    println!("{}", calc_whitespace(format!("│ 🫀 {}", kernel)));
+    println!("{}", calc_whitespace(format!("│ 🧠 {}", memory)));
+    println!("{}", calc_whitespace(format!("│ 💾 {}", disk)));
 
     match environment.as_ref() {
         "" => (),
         _ => println!(
             "{}",
-            calc_whitespace(format!("│ 🖥️ {}", upper_first(environment).await)).await
+            calc_whitespace(format!("│ 🖥️ {}", upper_first(environment)))
         ),
     }
 
     if up_count != *"│ none".to_string() {
-        println!("{}", calc_whitespace(up_count).await);
+        println!("{}", calc_whitespace(up_count));
     }
 
     match package_count {
         -1 => (),
-        0 => println!("{}", calc_whitespace("│ 📦 No packages".to_string()).await),
-        1 => println!("{}", calc_whitespace("│ 📦 1 package".to_string()).await),
+        0 => println!("{}", calc_whitespace("│ 📦 No packages".to_string())),
+        1 => println!("{}", calc_whitespace("│ 📦 1 package".to_string())),
         _ => println!(
             "{}",
-            calc_whitespace(format!("│ 📦 {} packages", package_count)).await
+            calc_whitespace(format!("│ 📦 {} packages", package_count))
         ),
     }
 
@@ -489,7 +489,7 @@ async fn main() {
         "" => (),
         _ => println!(
             "{}",
-            calc_whitespace(format!("│ 🎵 {}", song.trim_matches('\n'))).await
+            calc_whitespace(format!("│ 🎵 {}", song.trim_matches('\n')))
         ),
     }
 
