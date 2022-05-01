@@ -43,7 +43,7 @@ fn read_config() -> serde_json::Value {
         .expect("Failed to parse config file as a JSON.")
 }
 
-fn update_commmand(command: String) -> (CommandKind, Exec) {
+fn check_update_commmand(command: String) -> (CommandKind, Exec) {
     match command.trim_matches('\"') {
         "pacman" => (CommandKind::Pacman, Exec::cmd("checkupdates")),
         "apt" => (
@@ -63,57 +63,63 @@ fn update_commmand(command: String) -> (CommandKind, Exec) {
     }
 }
 
-fn check_updates() -> i32 {
-    let mut total_updates = 0;
-    let mut commands = Vec::new();
+fn do_update_counting(arg: String) -> i32 {
+    let (kind, exec) = check_update_commmand(arg);
+    let reader = exec.stream_stdout().unwrap();
 
+    let fs = BufReader::new(reader);
+    match kind {
+        CommandKind::Apt => {
+            let num = fs.lines().skip(2).count().to_string();
+            num.parse::<i32>().unwrap()
+        }
+        CommandKind::Portage => {
+            let num = fs.lines().count().to_string();
+            if num.trim_end_matches('\n') != "matches" {
+                num.trim_end_matches('\n').parse::<i32>().unwrap_or(1)
+            } else {
+                0
+            }
+        }
+        CommandKind::Dnf => {
+            let num = fs.lines().skip(3).count().to_string();
+            num.parse::<i32>().unwrap()
+        }
+        _ => {
+            let num = fs.lines().count().to_string();
+            num.trim_end_matches('\n').parse::<i32>().unwrap()
+        }
+    }
+}
+
+fn check_updates() -> i32 {
     if JSON["package_managers"] == serde_json::json![null] {
         return -1;
     }
 
     if JSON["package_managers"].is_array() {
         let pm = JSON["package_managers"].as_array().unwrap();
+        let mut handles = Vec::new();
 
         for arg in pm {
-            let (kind, exec) = update_commmand(arg.to_string());
-            let reader = exec.stream_stdout().unwrap();
-            commands.push((kind, reader));
+            let handle = std::thread::spawn(move || do_update_counting(arg.to_string()));
+            handles.push(handle);
         }
+
+        let mut total_updates = 0;
+
+        for handle in handles {
+            total_updates += handle.join().unwrap();
+        }
+
+        total_updates
     } else {
         let pm = &JSON["package_managers"];
-        let (kind, exec) = update_commmand(pm.to_string());
-        let reader = exec.stream_stdout().unwrap();
-        commands.push((kind, reader));
+        do_update_counting(pm.to_string())
     }
-
-    for (kind, reader) in commands {
-        let fs = BufReader::new(reader);
-        match kind {
-            CommandKind::Apt => {
-                let num = fs.lines().skip(2).count().to_string();
-                total_updates += num.parse::<i32>().unwrap();
-            }
-            CommandKind::Portage => {
-                let num = fs.lines().count().to_string();
-                if num.trim_end_matches('\n') != "matches" {
-                    total_updates += num.trim_end_matches('\n').parse::<i32>().unwrap_or(1);
-                }
-            }
-            CommandKind::Dnf => {
-                let num = fs.lines().skip(3).count().to_string();
-                total_updates += num.parse::<i32>().unwrap();
-            }
-            _ => {
-                let num = fs.lines().count().to_string();
-                total_updates += num.trim_end_matches('\n').parse::<i32>().unwrap();
-            }
-        }
-    }
-
-    total_updates
 }
 
-fn count_command(command: String) -> (CommandKind, Exec) {
+fn check_installed_command(command: String) -> (CommandKind, Exec) {
     match command.trim_matches('\"') {
         "pacman" => (CommandKind::Pacman, Exec::cmd("pacman").arg("-Q")),
         "apt" => (
@@ -133,49 +139,56 @@ fn count_command(command: String) -> (CommandKind, Exec) {
     }
 }
 
-fn get_package_count() -> i32 {
-    let mut total_packages = 0;
-    let mut commands = Vec::new();
+fn do_installed_counting(arg: String) -> i32 {
+    let (kind, exec) = check_installed_command(arg);
+    let reader = exec.stream_stdout().unwrap();
 
+    let fs = BufReader::new(reader);
+    match kind {
+        CommandKind::Apt => {
+            let num = fs.lines().skip(2).count().to_string();
+            num.parse::<i32>().unwrap()
+        }
+        CommandKind::Portage => {
+            let num = fs.lines().count().to_string();
+            if num.trim_end_matches('\n') != "matches" {
+                num.trim_end_matches('\n').parse::<i32>().unwrap_or(1)
+            } else {
+                0
+            }
+        }
+        _ => {
+            let num = fs.lines().count().to_string();
+            num.trim_end_matches('\n').parse::<i32>().unwrap()
+        }
+    }
+}
+
+fn get_package_count() -> i32 {
     if JSON["package_managers"] == serde_json::json![null] {
         return -1;
     }
 
     if JSON["package_managers"].is_array() {
         let pm = JSON["package_managers"].as_array().unwrap();
+        let mut handles = Vec::new();
+
         for arg in pm {
-            let (kind, exec) = count_command(arg.to_string());
-            let reader = exec.stream_stdout().unwrap();
-            commands.push((kind, reader));
+            let handle = std::thread::spawn(move || do_installed_counting(arg.to_string()));
+            handles.push(handle);
         }
+
+        let mut total_packages = 0;
+
+        for handle in handles {
+            total_packages += handle.join().unwrap();
+        }
+
+        total_packages
     } else {
         let pm = &JSON["package_managers"];
-        let (kind, exec) = count_command(pm.to_string());
-        let reader = exec.stream_stdout().unwrap();
-        commands.push((kind, reader));
+        do_installed_counting(pm.to_string())
     }
-
-    for (kind, reader) in commands {
-        let fs = BufReader::new(reader);
-        match kind {
-            CommandKind::Apt => {
-                let num = fs.lines().skip(2).count().to_string();
-                total_packages += num.parse::<i32>().unwrap();
-            }
-            CommandKind::Portage => {
-                let num = fs.lines().count().to_string();
-                if num.trim_end_matches('\n') != "matches" {
-                    total_packages += num.trim_end_matches('\n').parse::<i32>().unwrap_or(1);
-                }
-            }
-            _ => {
-                let num = fs.lines().count().to_string();
-                total_packages += num.trim_end_matches('\n').parse::<i32>().unwrap();
-            }
-        }
-    }
-
-    total_packages
 }
 
 fn get_release() -> String {
