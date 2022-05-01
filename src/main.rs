@@ -403,15 +403,13 @@ async fn get_weather() -> String {
 
 #[tracing::instrument]
 fn greeting() -> String {
-    let name;
-    if JSON["name"] == serde_json::json![null] {
-        name = realname();
+    let name = if JSON["name"] == serde_json::json![null] {
+        realname()
     } else {
-        name = JSON
-            .get("name")
+        JSON.get("name")
             .expect("Couldn't find 'name' attribute.")
-            .to_string();
-    }
+            .to_string()
+    };
     match Local::now().hour() {
         6..=11 => "🌇 Good morning",
         12..=17 => "🏙️ Good afternoon",
