@@ -123,7 +123,6 @@ async fn do_update_counting(arg: String) -> i32 {
     let fs = BufReader::new(reader);
     match kind {
         CommandKind::Apt => count_lines(2, fs).await,
-        CommandKind::Portage => count_lines(0, fs).await,
         CommandKind::Dnf => count_lines(3, fs).await,
         _ => count_lines(0, fs).await,
     }
@@ -586,7 +585,7 @@ async fn main() {
         ),
     }
 
-    if up_count != *"│ none".to_string() {
+    if up_count != "│ none" {
         println!("{}", calc_whitespace(up_count));
     }
 
