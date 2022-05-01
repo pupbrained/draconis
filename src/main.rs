@@ -1,19 +1,15 @@
-use std::process::Stdio;
-
-use tokio::process::ChildStdout;
-
 use {
     argparse::{ArgumentParser, Store},
     chrono::prelude::{Local, Timelike},
     once_cell::sync::Lazy,
     openweathermap::weather,
-    std::{env, fs::File},
+    std::{env, fs::File, process::Stdio},
     substring::Substring,
     sys_info::{hostname, linux_os_release, os_release},
     systemstat::{saturating_sub_bytes, Platform, System},
     tokio::{
         io::{AsyncBufReadExt, BufReader},
-        process::Command,
+        process::{ChildStdout, Command},
     },
     unicode_segmentation::UnicodeSegmentation,
     whoami::username,
