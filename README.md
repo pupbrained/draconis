@@ -1,11 +1,10 @@
 # hello-rs
 Small terminal welcome program written in rust
 
-![image](https://user-images.githubusercontent.com/33522919/166163107-365b79d9-f295-4dfb-9604-fe373cf14a57.png)
+![image](https://user-images.githubusercontent.com/33522919/166180428-6f1721c0-01ea-4365-9ae4-4e1409002442.png)
 
 ## Requirements
 * `pacman-contrib` for pacman
-* `eix` for portage
 
 ## Important
 * This program uses the openweathermap API for fetching the weather. You must have an API key from openweathermap for it to work.
