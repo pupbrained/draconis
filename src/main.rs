@@ -123,6 +123,7 @@ async fn do_update_counting(arg: String) -> i32 {
     let fs = BufReader::new(reader);
     match kind {
         CommandKind::Apt => count_lines(2, fs).await,
+        CommandKind::Portage => 0, // FIXME: Portage needs a proper update count command
         CommandKind::Dnf => count_lines(3, fs).await,
         _ => count_lines(0, fs).await,
     }
@@ -173,8 +174,8 @@ fn check_installed_command(command: String) -> (CommandKind, Command) {
             command
         }),
         "portage" => (CommandKind::Portage, {
-            let mut command = Command::new("eix-installed");
-            command.arg("-a");
+            let mut command = Command::new("qlist");
+            command.arg("-I");
             command
         }),
         "apk" => (CommandKind::Apk, {
@@ -206,7 +207,6 @@ async fn do_installed_counting(arg: String) -> i32 {
     let fs = BufReader::new(reader);
     match kind {
         CommandKind::Apt => count_lines(2, fs).await,
-        CommandKind::Portage => count_lines(0, fs).await,
         _ => count_lines(0, fs).await,
     }
 }
