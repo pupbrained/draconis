@@ -55,8 +55,8 @@ fn read_config() -> serde_json::Value {
     serde_json::from_reader(file).unwrap()
 }
 
-fn check_update_commmand(command: String) -> (CommandKind, Command) {
-    match command.trim_matches('\"') {
+fn check_update_commmand(command: String) -> Option<(CommandKind, Command)> {
+    let tup = match command.as_str() {
         "pacman" => (CommandKind::Pacman, Command::new("checkupdates")),
         "apt" => (CommandKind::Apt, {
             let mut command = Command::new("apt");
@@ -84,16 +84,26 @@ fn check_update_commmand(command: String) -> (CommandKind, Command) {
             command.arg("check-update");
             command
         }),
-        other => panic!("Unsupported package manager: {}", other),
-    }
+        other => {
+            tracing::warn!("Unsupported package manager: {}", other);
+            return None;
+        }
+    };
+
+    Some(tup)
 }
 
-async fn count_lines(skip: i32, mut reader: BufReader<ChildStdout>) -> i32 {
+async fn count_lines(skip: i32, mut reader: BufReader<ChildStdout>) -> Option<i32> {
     let mut total = 0;
     let mut s = String::new();
 
     loop {
-        let n = reader.read_line(&mut s).await.unwrap();
+        let n = reader
+            .read_line(&mut s)
+            .await
+            .map_err(|e| tracing::warn!("Failed to read line from command output, {}", e))
+            .ok()?;
+
         if n == 0 {
             break;
         }
@@ -102,23 +112,22 @@ async fn count_lines(skip: i32, mut reader: BufReader<ChildStdout>) -> i32 {
     }
 
     if total > skip {
-        total - skip
+        Some(total - skip)
     } else {
-        0
+        Some(0)
     }
 }
 
 #[tracing::instrument]
-async fn do_update_counting(arg: String) -> i32 {
-    let (kind, mut command) = check_update_commmand(arg);
+async fn do_update_counting(arg: String) -> Option<i32> {
+    let (kind, mut command) = check_update_commmand(arg)?;
     let reader = command
         .stderr(Stdio::null())
         .stdout(Stdio::piped())
         .spawn()
-        .unwrap()
+        .ok()?
         .stdout
-        .take()
-        .unwrap();
+        .take()?;
 
     let fs = BufReader::new(reader);
     match kind {
@@ -129,35 +138,33 @@ async fn do_update_counting(arg: String) -> i32 {
     }
 }
 
-async fn check_updates() -> i32 {
-    if JSON["package_managers"] == serde_json::json![null] {
-        return -1;
-    }
+async fn check_updates() -> Option<i32> {
+    match &JSON["package_managers"] {
+        serde_json::Value::Array(pm) => {
+            let mut handles = Vec::new();
 
-    if JSON["package_managers"].is_array() {
-        let pm = JSON["package_managers"].as_array().unwrap();
-        let mut handles = Vec::new();
+            for arg in pm {
+                if let serde_json::Value::String(string) = arg {
+                    let handle = tokio::spawn(do_update_counting(string.clone()));
+                    handles.push(handle);
+                }
+            }
 
-        for arg in pm {
-            let handle = tokio::spawn(do_update_counting(arg.to_string()));
-            handles.push(handle);
+            let mut total_updates = 0;
+
+            for handle in handles {
+                total_updates += handle.await.ok()??;
+            }
+
+            Some(total_updates)
         }
-
-        let mut total_updates = 0;
-
-        for handle in handles {
-            total_updates += handle.await.unwrap();
-        }
-
-        total_updates
-    } else {
-        let pm = &JSON["package_managers"];
-        do_update_counting(pm.to_string()).await
+        serde_json::Value::String(string) => do_update_counting(string.clone()).await,
+        _ => None,
     }
 }
 
-fn check_installed_command(command: String) -> (CommandKind, Command) {
-    match command.trim_matches('\"') {
+fn check_installed_command(command: String) -> Option<(CommandKind, Command)> {
+    let tup = match command.as_str() {
         "pacman" => (CommandKind::Pacman, {
             let mut command = Command::new("pacman");
             command.arg("-Q");
@@ -188,21 +195,25 @@ fn check_installed_command(command: String) -> (CommandKind, Command) {
             command.args(&["list", "installed"]);
             command
         }),
-        other => panic!("unknown package manager: {}", other),
-    }
+        other => {
+            tracing::warn!("unknown package manager: {}", other);
+            return None;
+        }
+    };
+
+    Some(tup)
 }
 
 #[tracing::instrument]
-async fn do_installed_counting(arg: String) -> i32 {
-    let (kind, mut command) = check_installed_command(arg);
+async fn do_installed_counting(arg: String) -> Option<i32> {
+    let (kind, mut command) = check_installed_command(arg)?;
     let reader = command
         .stderr(Stdio::null())
         .stdout(Stdio::piped())
         .spawn()
-        .unwrap()
+        .ok()?
         .stdout
-        .take()
-        .unwrap();
+        .take()?;
 
     let fs = BufReader::new(reader);
     match kind {
@@ -212,79 +223,74 @@ async fn do_installed_counting(arg: String) -> i32 {
 }
 
 #[tracing::instrument]
-async fn get_package_count() -> i32 {
-    if JSON["package_managers"] == serde_json::json![null] {
-        return -1;
-    }
+async fn get_package_count() -> Option<i32> {
+    match &JSON["package_managers"] {
+        serde_json::Value::Array(pm) => {
+            let mut handles = Vec::new();
 
-    if JSON["package_managers"].is_array() {
-        let pm = JSON["package_managers"].as_array().unwrap();
-        let mut handles = Vec::new();
+            for arg in pm {
+                if let serde_json::Value::String(string) = arg {
+                    let handle = tokio::spawn(do_installed_counting(string.to_owned()));
+                    handles.push(handle);
+                }
+            }
 
-        for arg in pm {
-            let handle = tokio::spawn(do_installed_counting(arg.to_string()));
-            handles.push(handle);
+            let mut total_packages = 0;
+
+            for handle in handles {
+                total_packages += handle.await.ok()??;
+            }
+
+            Some(total_packages)
         }
-
-        let mut total_packages = 0;
-
-        for handle in handles {
-            total_packages += handle.await.unwrap();
-        }
-
-        total_packages
-    } else {
-        let pm = &JSON["package_managers"];
-        do_installed_counting(pm.to_string()).await
+        serde_json::Value::String(string) => do_installed_counting(string.clone()).await,
+        _ => None,
     }
 }
 
 #[tracing::instrument]
-fn get_release_blocking() -> String {
-    let rel = linux_os_release().unwrap().pretty_name.unwrap(); // this performs a blocking read of /etc/os-release
+fn get_release_blocking() -> Option<String> {
+    let rel = linux_os_release().ok()?.pretty_name?; // this performs a blocking read of /etc/os-release
 
     if rel.len() > 41 {
-        format!("{}...", rel.trim_matches('\"').substring(0, 37))
+        Some(format!("{}...", rel.trim_matches('\"').substring(0, 37)))
     } else {
-        rel.trim_matches('\"')
-            .trim_end_matches('\n')
-            .trim_end_matches('\"')
-            .to_string()
+        Some(
+            rel.trim_matches('\"')
+                .trim_end_matches('\n')
+                .trim_end_matches('\"')
+                .to_string(),
+        )
     }
 }
 
 #[tracing::instrument]
-fn get_kernel_blocking() -> String {
-    let kernel = os_release().unwrap(); // this performs a blocking read of /proc/sys/kernel/osrelease
+fn get_kernel_blocking() -> Option<String> {
+    let kernel = os_release().ok()?; // this performs a blocking read of /proc/sys/kernel/osrelease
     if kernel.len() > 41 {
-        format!("{}...", kernel.substring(0, 37))
+        Some(format!("{}...", kernel.substring(0, 37)))
     } else {
-        kernel.trim_end_matches('\n').to_string()
+        Some(kernel.trim_end_matches('\n').to_string())
     }
 }
 
 #[tracing::instrument]
-fn get_song() -> String {
-    if JSON["song"] == false || JSON["song"] == serde_json::json![null] {
-        return "".to_string();
+fn get_song() -> Option<String> {
+    if JSON["song"] == false || JSON["song"].is_null() {
+        return None;
     }
+
     let player = PlayerFinder::new()
-        .expect("Could not connect to DBus")
-        .find_active(); // this is blocking
-    let player = match player {
-        Ok(p) => p,
-        Err(_) => return "".to_string(),
-    };
-    let song = player.get_metadata().expect("Failed to get metadata"); // this is blocking
-    let songname = format!(
-        "{} - {}",
-        song.artists().unwrap().first().unwrap(),
-        song.title().unwrap()
-    );
+        .ok()?
+        .find_active() // this is blocking
+        .ok()?;
+    let song = player.get_metadata().ok()?; // this is blocking
+    let songname = format!("{} - {}", song.artists()?.first()?, song.title()?);
+
     if songname.len() > 41 {
-        format!("{}...", songname.substring(0, 37))
+        Some(format!("{}...", songname.substring(0, 37)))
     } else {
-        songname.trim_end_matches('\n').to_string()
+        Some(songname.trim_end_matches('\n').to_string())
     }
 }
 
@@ -315,51 +321,29 @@ fn get_environment() -> String {
 }
 
 #[tracing::instrument]
-async fn get_weather() -> String {
-    if JSON["location"] == serde_json::json![null]
-        || JSON["units"] == serde_json::json![null]
-        || JSON["lang"] == serde_json::json![null]
-        || JSON["api_key"] == serde_json::json![null]
+async fn get_weather() -> Option<String> {
+    if JSON["location"].is_null()
+        || JSON["units"].is_null()
+        || JSON["lang"].is_null()
+        || JSON["api_key"].is_null()
     {
-        return "".to_string();
+        return None;
     }
-    let deg;
-    let icon_code;
-    let icon;
-    let main;
-    let temp;
-    let location = JSON
-        .get("location")
-        .expect("Couldn't find 'location' attribute.")
-        .to_string();
-    let units = JSON
-        .get("units")
-        .expect("Couldn't find 'units' attribute.")
-        .to_string();
-    let lang = JSON
-        .get("lang")
-        .expect("Couldn't find 'lang' attribute.")
-        .to_string();
-    let api_key = JSON
-        .get("api_key")
-        .expect("Couldn't find 'api_key' attribute.")
-        .to_string();
-    match &weather(
-        location.trim_matches('\"'),
-        units.trim_matches('\"'),
-        lang.trim_matches('\"'),
-        api_key.trim_matches('\"'),
-    )
-    .await
-    {
+
+    let location = JSON.get("location")?.as_str()?;
+    let units = JSON.get("units")?.as_str()?;
+    let lang = JSON.get("lang")?.as_str()?;
+    let api_key = JSON.get("api_key")?.as_str()?;
+
+    match &weather(location, units, lang, api_key).await {
         Ok(current) => {
-            deg = if units.trim_matches('\"') == "imperial" {
+            let deg = if units.trim_matches('\"') == "imperial" {
                 "F"
             } else {
                 "C"
             };
-            icon_code = &current.weather[0].icon;
-            icon = match icon_code.as_ref() {
+            let icon_code = &current.weather[0].icon;
+            let icon = match icon_code.as_ref() {
                 "01d" => "☀️",
                 "01n" => "🌙",
                 "02d" => "⛅️",
@@ -382,68 +366,68 @@ async fn get_weather() -> String {
                 "50n" => "🌫️",
                 _ => "❓",
             };
-            main = current.weather[0].main.to_string();
-            temp = current.main.temp.to_string();
+            let main = current.weather[0].main.to_string();
+            let temp = current.main.temp.to_string();
+
+            Some(format!(
+                "│ {} {} {}°{}",
+                icon,
+                main,
+                temp.substring(0, 2),
+                deg
+            ))
         }
-        Err(e) => panic!("Could not fetch weather because: {}", e),
+        Err(e) => {
+            tracing::warn!("Could not fetch weather because: {}", e);
+            None
+        }
     }
-    format!("│ {} {} {}°{}", icon, main, temp.substring(0, 2), deg)
 }
 
 #[tracing::instrument]
-fn greeting() -> String {
+fn greeting() -> Option<String> {
     let name = if JSON["name"] == serde_json::json![null] {
         realname()
     } else {
-        JSON.get("name")
-            .expect("Couldn't find 'name' attribute.")
-            .to_string()
+        JSON.get("name")?.as_str()?.to_owned()
     };
-    match Local::now().hour() {
+
+    let phrase = match Local::now().hour() {
         6..=11 => "🌇 Good morning",
         12..=17 => "🏙️ Good afternoon",
         18..=22 => "🌆 Good evening",
         _ => "🌃 Good night",
-    }
-    .to_string()
-        + ", "
-        + name.trim_matches('\"')
+    };
+
+    Some(format!("{}, {}", phrase, name))
 }
 
 #[tracing::instrument]
-fn get_hostname() -> String {
-    if JSON["hostname"] == serde_json::json![null] {
-        return format!("{}@{}", username(), hostname().unwrap());
+fn get_hostname() -> Option<String> {
+    if let serde_json::Value::String(string) = &JSON["hostname"] {
+        return Some(string.clone());
     }
-    JSON.get("hostname")
-        .unwrap()
-        .to_string()
-        .trim_matches('\"')
-        .to_string()
+
+    Some(format!("{}@{}", username(), hostname().ok()?))
 }
 
 #[tracing::instrument]
-fn get_datetime() -> String {
-    if JSON["time_format"] == serde_json::json![null] {
-        return "".to_string();
-    }
+fn get_datetime() -> Option<String> {
     let dt = Local::now();
+    let time = match &JSON["time_format"] {
+        serde_json::Value::String(time) => match time.as_str() {
+            "12h" => dt.format("%l:%M %p").to_string(),
+            "24h" => dt.format("%H:%M").to_string(),
+            _ => "off".to_string(),
+        },
+        _ => return None,
+    };
     let day = dt.format("%e").to_string();
     let date = match day.trim_start_matches(' ') {
         "1" | "21" | "31 " => format!("{} {}st", dt.format("%B"), day.trim_start_matches(' ')),
         "2" | "22" => format!("{} {}nd", dt.format("%B"), day.trim_start_matches(' ')),
         "3" | "23" => format!("{} {}rd", dt.format("%B"), day.trim_start_matches(' ')),
         _ => format!("{} {}th", dt.format("%B"), day.trim_start_matches(' ')),
-    };
-    let time = match JSON
-        .get("time_format")
-        .expect("Couldn't find 'time_format' attribute.")
-        .to_string()
-        .trim_matches('\"')
-    {
-        "12h" => dt.format("%l:%M %p").to_string(),
-        "24h" => dt.format("%H:%M").to_string(),
-        _ => "off".to_string(),
     };
     let time_icon = match dt.hour() {
         0 | 12 => "🕛",
@@ -460,15 +444,19 @@ fn get_datetime() -> String {
         11 | 23 => "🕚",
         _ => "🕛",
     };
-    format!("│ {} {}, {}", time_icon, date, time.trim_start_matches(' '))
+    Some(format!(
+        "│ {} {}, {}",
+        time_icon,
+        date,
+        time.trim_start_matches(' ')
+    ))
 }
 
 #[tracing::instrument]
-async fn count_updates() -> String {
-    let count = check_updates().await;
+async fn count_updates() -> Option<String> {
+    let count = check_updates().await?;
     let update_count;
     let updates: String = match count {
-        -1 => "none",
         0 => "☑️ Up to date",
         1 => "1️⃣ 1 update",
         2 => "2️⃣ 2 updates",
@@ -486,7 +474,7 @@ async fn count_updates() -> String {
         }
     }
     .to_string();
-    format!("│ {}", updates)
+    Some(format!("│ {}", updates))
 }
 
 #[tracing::instrument]
@@ -555,25 +543,31 @@ async fn main() {
         time.elapsed().as_secs_f32()
     );
 
-    println!(
-        "{}",
-        calc_with_hostname(format!("╭─\x1b[32m{}\x1b[0m", hostname))
-    );
-
-    println!("{}", calc_whitespace(format!("│ {}!", greeting)));
-
-    match datetime.as_ref() {
-        "" => (),
-        _ => println!("{}", calc_whitespace(datetime)),
+    if let Some(hostname) = hostname {
+        println!(
+            "{}",
+            calc_with_hostname(format!("╭─\x1b[32m{}\x1b[0m", hostname))
+        );
     }
 
-    match weather.as_ref() {
-        "" => (),
-        _ => println!("{}", calc_whitespace(weather)),
+    if let Some(greeting) = greeting {
+        println!("{}", calc_whitespace(format!("│ {}!", greeting)));
     }
 
-    println!("{}", calc_whitespace(format!("│ 💻 {}", release)));
-    println!("{}", calc_whitespace(format!("│ 🫀 {}", kernel)));
+    if let Some(datetime) = datetime {
+        println!("{}", calc_whitespace(datetime));
+    }
+
+    if let Some(weather) = weather {
+        println!("{}", calc_whitespace(weather));
+    }
+
+    if let Some(release) = release {
+        println!("{}", calc_whitespace(format!("│ 💻 {}", release)));
+    }
+    if let Some(kernel) = kernel {
+        println!("{}", calc_whitespace(format!("│ 🫀 {}", kernel)));
+    }
     println!("{}", calc_whitespace(format!("│ 🧠 {}", memory)));
     println!("{}", calc_whitespace(format!("│ 💾 {}", disk)));
 
@@ -585,26 +579,22 @@ async fn main() {
         ),
     }
 
-    if up_count != "│ none" {
-        println!("{}", calc_whitespace(up_count));
+    if let Some(count) = up_count {
+        println!("{}", calc_whitespace(count));
     }
 
     match package_count {
-        -1 => (),
-        0 => println!("{}", calc_whitespace("│ 📦 No packages".to_string())),
-        1 => println!("{}", calc_whitespace("│ 📦 1 package".to_string())),
-        _ => println!(
-            "{}",
-            calc_whitespace(format!("│ 📦 {} packages", package_count))
-        ),
+        None => (),
+        Some(0) => println!("{}", calc_whitespace("│ 📦 No packages".to_string())),
+        Some(1) => println!("{}", calc_whitespace("│ 📦 1 package".to_string())),
+        Some(n) => println!("{}", calc_whitespace(format!("│ 📦 {} packages", n))),
     }
 
-    match song.as_ref() {
-        "" => (),
-        _ => println!(
+    if let Some(song) = song.as_ref() {
+        println!(
             "{}",
             calc_whitespace(format!("│ 🎵 {}", song.trim_matches('\n')))
-        ),
+        );
     }
 
     println!("╰─────────────────────────────────────────────╯");
