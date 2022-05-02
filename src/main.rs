@@ -275,26 +275,23 @@ fn get_kernel_blocking() -> Option<String> {
 }
 
 #[tracing::instrument]
-async fn get_song() -> Option<String> {
+fn get_song() -> Option<String> {
     if JSON["song"] == false || JSON["song"].is_null() {
         return None;
     }
 
-    let song = Command::new("playerctl")
-        .args(&["metadata", "-f", "{{ artist }} - {{ title }}"])
-        .output()
-        .await
-        .unwrap();
-    let songerr = String::from_utf8_lossy(&song.stderr);
-    let songname = String::from_utf8_lossy(&song.stdout);
-    if songerr != "No players found" {
-        if songname.len() > 41 {
-            Some(format!("{}...", songname.substring(0, 37)))
-        } else {
-            Some(songname.trim_end_matches('\n').to_string())
-        }
+    let player = PlayerFinder::new()
+        .ok()?
+        .find_all()
+        .ok()?;
+    let song = player.first()?.get_metadata().ok()?; // this is blocking
+    let artists = format!("{}", song.artists()?.join(", "));
+    let songname = format!("{} - {}", artists, song.title()?);
+
+    if songname.len() > 41 {
+        Some(format!("{}...", songname.substring(0, 37)))
     } else {
-        Some("".to_string())
+        Some(songname.trim_end_matches('\n').to_string())
     }
 }
 
@@ -504,6 +501,7 @@ fn get_disk_usage() -> String {
 
 #[tokio::main]
 async fn main() {
+    get_song();
     tracing_subscriber::registry()
         .with(
             fmt::layer()
@@ -544,7 +542,6 @@ async fn main() {
     let song = song.await.unwrap();
     let release = release.await.unwrap();
     let kernel = kernel.await.unwrap();
-
 
     tracing::info!(
         "Finished collecting data in {:.3}",
@@ -598,7 +595,7 @@ async fn main() {
         Some(n) => println!("{}", calc_whitespace(format!("│ 📦 {} packages", n))),
     }
 
-    if let Some(song) = song.await.as_ref() {
+    if let Some(song) = song.as_ref() {
         println!(
             "{}",
             calc_whitespace(format!("│ 🎵 {}", song.trim_matches('\n')))
