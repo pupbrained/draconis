@@ -378,7 +378,7 @@ async fn get_weather() -> Option<String> {
             ))
         }
         Err(e) => {
-            tracing::warn!("Could not fetch weather because: {}", e);
+            tracing::warn!("Could not fetch weather because: {} - maybe you forgot an API key?", e);
             None
         }
     }
