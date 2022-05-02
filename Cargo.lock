@@ -119,9 +119,9 @@ dependencies = [
 
 [[package]]
 name = "darling"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a78af487e4eb8f4421a1770687b328af6bb4494ca93435210678c6eea875c11"
+checksum = "ebfa6e6eb98ba452aaea6415e529e4890ab09a36aaf03c71146acf9f0eab89f6"
 dependencies = [
  "darling_core",
  "darling_macro",
@@ -129,9 +129,9 @@ dependencies = [
 
 [[package]]
 name = "darling_core"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b315f49c7b6db3708bca6e6913c194581a44ec619b7a39e131d4dd63733a3698"
+checksum = "c8af196b04f843cd6f1d979c2b3697de0d33050892662efba69112ee7b1fc968"
 dependencies = [
  "ident_case",
  "proc-macro2 0.3.8",
@@ -141,9 +141,9 @@ dependencies = [
 
 [[package]]
 name = "darling_macro"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb69a38fdeaeaf3db712e1df170de67ee9dfc24fb88ca3e9d21e703ec25a4d8e"
+checksum = "0619148430511a3ecf5e52752a9c948879207ab3096276a5a9ecf8b1e7fbe010"
 dependencies = [
  "darling_core",
  "quote 0.5.2",
@@ -152,9 +152,9 @@ dependencies = [
 
 [[package]]
 name = "dbus"
-version = "0.6.5"
+version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "48b5f0f36f1eebe901b0e6bee369a77ed3396334bf3f09abd46454a576f71819"
+checksum = "5cd9e78c210146a1860f897db03412fd5091fd73100778e43ee255cca252cf32"
 dependencies = [
  "libc",
  "libdbus-sys",
@@ -192,9 +192,9 @@ dependencies = [
 
 [[package]]
 name = "error-chain"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9435d864e017c3c6afeac1654189b06cdb491cf2ff73dbf0d73b0f292f42ff8"
+checksum = "ff511d5dc435d703f4971bc399647c9bc38e20cb41452e3b9feb4765419ed3f3"
 
 [[package]]
 name = "failure"
@@ -236,18 +236,18 @@ dependencies = [
 
 [[package]]
 name = "from_variants"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "557a27056175c8ecad545ace83508e10092dc8ae34b313c9ad8c8a72b4390b3f"
+checksum = "2b7b3795d7bd0d40e33224cbb46adb76a88b72c52143e7bcaad33bd8b6e89e32"
 dependencies = [
  "from_variants_impl",
 ]
 
 [[package]]
 name = "from_variants_impl"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc4f4e9b9f5c806f457759523a6c85826aa261115571d3e635f34d890104fbcd"
+checksum = "d54d084040e9757536fee724381a270bc650a9ca05dcf63a0ad3aaecb1e5b9c0"
 dependencies = [
  "darling",
  "error-chain",
@@ -637,9 +637,9 @@ dependencies = [
 
 [[package]]
 name = "mpris"
-version = "1.1.2"
+version = "2.0.0-rc2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "818520e449f43cd196bc4fdbd163d4f437f36481c2d4573dca4614bb89e4aef3"
+checksum = "195e67e2b467af5146f517b0d988b5894e425a77c52a9bb5a065513ef3c2e711"
 dependencies = [
  "dbus",
  "derive_is_enum_variant",

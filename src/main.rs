@@ -275,22 +275,26 @@ fn get_kernel_blocking() -> Option<String> {
 }
 
 #[tracing::instrument]
-fn get_song() -> Option<String> {
+async fn get_song() -> Option<String> {
     if JSON["song"] == false || JSON["song"].is_null() {
         return None;
     }
 
-    let player = PlayerFinder::new()
-        .ok()?
-        .find_active() // this is blocking
-        .ok()?;
-    let song = player.get_metadata().ok()?; // this is blocking
-    let songname = format!("{} - {}", song.artists()?.first()?, song.title()?);
-
-    if songname.len() > 41 {
-        Some(format!("{}...", songname.substring(0, 37)))
+    let song = Command::new("playerctl")
+        .args(&["metadata", "-f", "{{ artist }} - {{ title }}"])
+        .output()
+        .await
+        .unwrap();
+    let songerr = String::from_utf8_lossy(&song.stderr);
+    let songname = String::from_utf8_lossy(&song.stdout);
+    if songerr != "No players found" {
+        if songname.len() > 41 {
+            Some(format!("{}...", songname.substring(0, 37)))
+        } else {
+            Some(songname.trim_end_matches('\n').to_string())
+        }
     } else {
-        Some(songname.trim_end_matches('\n').to_string())
+        Some("".to_string())
     }
 }
 
@@ -378,7 +382,10 @@ async fn get_weather() -> Option<String> {
             ))
         }
         Err(e) => {
-            tracing::warn!("Could not fetch weather because: {} - maybe you forgot an API key?", e);
+            tracing::warn!(
+                "Could not fetch weather because: {} - maybe you forgot an API key?",
+                e
+            );
             None
         }
     }
@@ -538,6 +545,7 @@ async fn main() {
     let release = release.await.unwrap();
     let kernel = kernel.await.unwrap();
 
+
     tracing::info!(
         "Finished collecting data in {:.3}",
         time.elapsed().as_secs_f32()
@@ -590,7 +598,7 @@ async fn main() {
         Some(n) => println!("{}", calc_whitespace(format!("│ 📦 {} packages", n))),
     }
 
-    if let Some(song) = song.as_ref() {
+    if let Some(song) = song.await.as_ref() {
         println!(
             "{}",
             calc_whitespace(format!("│ 🎵 {}", song.trim_matches('\n')))
