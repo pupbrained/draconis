@@ -1,0 +1,12 @@
+{
+  name: "John", // If unspecified, will default to your user's realname
+  hostname: "john@homepc", // If unspecified, will default to your system hostname
+  icons: "normal", // Can be 'normal' or 'emoji' - if unspecified, will not show icons
+  time_format: "12h", // Can be '12h' or '24h' - if unspecified, will not show time
+  location: "New York",
+  units: "imperial",
+  lang: "en",
+  api_key: "abc123", // If any of these are unspecified, will not show weather
+  package_managers: ["pacman", "apt"], // Can be an array or a string - if unspecified, will not show package count or update count
+  song: true, // If false or unspecified, will not show song status
+}

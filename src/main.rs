@@ -1,9 +1,12 @@
+pub mod statics;
+
 use {
     argparse::{ArgumentParser, Store},
     chrono::prelude::{Local, Timelike},
     mpris::PlayerFinder,
     once_cell::sync::Lazy,
     openweathermap::weather,
+    statics::*,
     std::{env, fs::File, io::ErrorKind, process::Stdio, time::Instant},
     substring::Substring,
     sys_info::{hostname, linux_os_release, os_release},
@@ -30,8 +33,6 @@ enum CommandKind {
     Apk,
     Dnf,
 }
-
-static JSON: Lazy<serde_json::Value> = Lazy::new(read_config);
 
 fn read_config() -> serde_json::Value {
     let mut path = format!("{}/.config/hello-rs/config.json", env::var("HOME").unwrap());
@@ -280,12 +281,9 @@ fn get_song() -> Option<String> {
         return None;
     }
 
-    let player = PlayerFinder::new()
-        .ok()?
-        .find_all()
-        .ok()?;
+    let player = PlayerFinder::new().ok()?.find_all().ok()?;
     let song = player.first()?.get_metadata().ok()?; // this is blocking
-    let artists = format!("{}", song.artists()?.join(", "));
+    let artists = song.artists()?.join(", ");
     let songname = format!("{} - {}", artists, song.title()?);
 
     if songname.len() > 41 {
@@ -310,7 +308,10 @@ fn calc_whitespace(text: String) -> String {
 }
 
 fn calc_with_hostname(text: String) -> String {
-    let size = 55 - text.graphemes(true).count();
+    let size = match JSON["icons"].as_str() {
+        Some("emoji") => 55 - text.graphemes(true).count(),
+        Some(&_) | None => 54 - text.graphemes(true).count(),
+    };
     let fs = format!("{}{}", "─".repeat(size), "╮");
     format!("{}{}", text, fs)
 }
@@ -344,39 +345,76 @@ async fn get_weather() -> Option<String> {
                 "C"
             };
             let icon_code = &current.weather[0].icon;
-            let icon = match icon_code.as_ref() {
-                "01d" => "☀️",
-                "01n" => "🌙",
-                "02d" => "⛅️",
-                "02n" => "🌙",
-                "03d" => "☁️",
-                "03n" => "☁️",
-                "04d" => "☁️",
-                "04n" => "☁️",
-                "09d" => "🌧️",
-                "09n" => "🌧️",
-                "10d" => "🌧️",
-                "10n" => "🌧️",
-                "11d" => "⛈️",
-                "11n" => "⛈️",
-                "13d" => "🌨️",
-                "13n" => "🌨️",
-                "40d" => "🌫️",
-                "40n" => "🌫️",
-                "50d" => "🌫️",
-                "50n" => "🌫️",
-                _ => "❓",
+            let icon = match JSON["icons"].as_str() {
+                Some("emoji") => {
+                    match icon_code.as_ref() {
+                        "01d" => WEATHER_EMOJIS[0], // Clear sky
+                        "01n" => WEATHER_EMOJIS[1],
+                        "02d" => WEATHER_EMOJIS[2], // Few clouds
+                        "02n" => WEATHER_EMOJIS[3],
+                        "03d" => WEATHER_EMOJIS[4], // Scattered clouds
+                        "03n" => WEATHER_EMOJIS[5],
+                        "04d" => WEATHER_EMOJIS[6], // Broken clouds
+                        "04n" => WEATHER_EMOJIS[7],
+                        "09d" => WEATHER_EMOJIS[8], // Shower rain
+                        "09n" => WEATHER_EMOJIS[9],
+                        "10d" => WEATHER_EMOJIS[10], // Rain
+                        "10n" => WEATHER_EMOJIS[11],
+                        "11d" => WEATHER_EMOJIS[12], // Thunderstorm
+                        "11n" => WEATHER_EMOJIS[13],
+                        "13d" => WEATHER_EMOJIS[14], // Snow
+                        "13n" => WEATHER_EMOJIS[15],
+                        "40d" => WEATHER_EMOJIS[16], // Mist
+                        "40n" => WEATHER_EMOJIS[17],
+                        "50d" => WEATHER_EMOJIS[18], // Fog
+                        "50n" => WEATHER_EMOJIS[19],
+                        _ => WEATHER_EMOJIS[20], // Unknown
+                    }
+                }
+                Some("normal") => match icon_code.as_ref() {
+                    "01d" => WEATHER_ICONS[0],
+                    "01n" => WEATHER_ICONS[1],
+                    "02d" => WEATHER_ICONS[2],
+                    "02n" => WEATHER_ICONS[3],
+                    "03d" => WEATHER_ICONS[4],
+                    "03n" => WEATHER_ICONS[5],
+                    "04d" => WEATHER_ICONS[6],
+                    "04n" => WEATHER_ICONS[7],
+                    "09d" => WEATHER_ICONS[8],
+                    "09n" => WEATHER_ICONS[9],
+                    "10d" => WEATHER_ICONS[10],
+                    "10n" => WEATHER_ICONS[11],
+                    "11d" => WEATHER_ICONS[12],
+                    "11n" => WEATHER_ICONS[13],
+                    "13d" => WEATHER_ICONS[14],
+                    "13n" => WEATHER_ICONS[15],
+                    "40d" => WEATHER_ICONS[16],
+                    "40n" => WEATHER_ICONS[17],
+                    "50d" => WEATHER_ICONS[18],
+                    "50n" => WEATHER_ICONS[19],
+                    _ => WEATHER_ICONS[20],
+                },
+                Some(&_) | None => "",
             };
             let main = current.weather[0].main.to_string();
             let temp = current.main.temp.to_string();
 
-            Some(format!(
-                "│ {} {} {}°{}",
-                icon,
-                main,
-                temp.substring(0, 2),
-                deg
-            ))
+            match JSON["icons"].as_str() {
+                Some("emoji") | Some("normal") => Some(format!(
+                    "│ {} {} {}°{}",
+                    icon,
+                    main,
+                    temp.substring(0, 2),
+                    deg
+                )),
+                Some(&_) | None => Some(format!(
+                    "│{} {} {}°{}",
+                    icon,
+                    main,
+                    temp.substring(0, 2),
+                    deg
+                )),
+            }
         }
         Err(e) => {
             tracing::warn!(
@@ -390,17 +428,31 @@ async fn get_weather() -> Option<String> {
 
 #[tracing::instrument]
 fn greeting() -> Option<String> {
-    let name = if JSON["name"] == serde_json::json![null] {
+    let name = if JSON["name"].is_null() {
         realname()
     } else {
         JSON.get("name")?.as_str()?.to_owned()
     };
 
-    let phrase = match Local::now().hour() {
-        6..=11 => "🌇 Good morning",
-        12..=17 => "🏙️ Good afternoon",
-        18..=22 => "🌆 Good evening",
-        _ => "🌃 Good night",
+    let phrase = match JSON["icons"].as_str() {
+        Some("emoji") => match Local::now().hour() {
+            6..=11 => format!("{} Good morning", GREET_EMOJIS[0]),
+            12..=17 => format!("{} Good afternoon", GREET_EMOJIS[1]),
+            18..=22 => format!("{} Good evening", GREET_EMOJIS[2]),
+            _ => format!("{} Good night", GREET_EMOJIS[3]),
+        },
+        Some("normal") => match Local::now().hour() {
+            6..=11 => format!("{} Good morning", GREET_ICONS[0]),
+            12..=17 => format!("{} Good afternoon", GREET_ICONS[1]),
+            18..=22 => format!("{} Good evening", GREET_ICONS[2]),
+            _ => format!("{} Good night", GREET_ICONS[3]),
+        },
+        Some(&_) | None => match Local::now().hour() {
+            6..=11 => "Good morning".to_string(),
+            12..=17 => "Good afternoon".to_string(),
+            18..=22 => "Good evening".to_string(),
+            _ => "Good night".to_string(),
+        },
     };
 
     Some(format!("{}, {}", phrase, name))
@@ -433,51 +485,88 @@ fn get_datetime() -> Option<String> {
         "3" | "23" => format!("{} {}rd", dt.format("%B"), day.trim_start_matches(' ')),
         _ => format!("{} {}th", dt.format("%B"), day.trim_start_matches(' ')),
     };
-    let time_icon = match dt.hour() {
-        0 | 12 => "🕛",
-        1 | 13 => "🕐",
-        2 | 14 => "🕑",
-        3 | 15 => "🕒",
-        4 | 16 => "🕓",
-        5 | 17 => "🕔",
-        6 | 18 => "🕕",
-        7 | 19 => "🕖",
-        8 | 20 => "🕗",
-        9 | 21 => "🕘",
-        10 | 22 => "🕙",
-        11 | 23 => "🕚",
-        _ => "🕛",
+    let time_icon = match JSON["icons"].as_str() {
+        Some("emoji") => {
+            let index: usize = if dt.hour() > 12 {
+                (dt.hour() - 12).try_into().unwrap()
+            } else {
+                dt.hour().try_into().unwrap()
+            };
+            TIME_EMOJIS[index.min(12)]
+        }
+        Some("normal") => {
+            let index: usize = if dt.hour() > 12 {
+                (dt.hour() - 12).try_into().unwrap()
+            } else {
+                dt.hour().try_into().unwrap()
+            };
+            TIME_ICONS[index.min(12)]
+        }
+        Some(&_) | None => "",
     };
-    Some(format!(
-        "│ {} {}, {}",
-        time_icon,
-        date,
-        time.trim_start_matches(' ')
-    ))
+
+    match JSON["icons"].as_str() {
+        Some("emoji") | Some("normal") => Some(format!(
+            "│ {} {}, {}",
+            time_icon,
+            date,
+            time.trim_start_matches(' ')
+        )),
+        Some(&_) | None => Some(format!(
+            "│{} {}, {}",
+            time_icon,
+            date,
+            time.trim_start_matches(' ')
+        )),
+    }
 }
 
 #[tracing::instrument]
 async fn count_updates() -> Option<String> {
     let count = check_updates().await?;
-    let update_count;
-    let updates: String = match count {
-        0 => "☑️ Up to date",
-        1 => "1️⃣ 1 update",
-        2 => "2️⃣ 2 updates",
-        3 => "3️⃣ 3 updates",
-        4 => "4️⃣ 4 updates",
-        5 => "5️⃣ 5 updates",
-        6 => "6️⃣ 6 updates",
-        7 => "7️⃣ 7 updates",
-        8 => "8️⃣ 8 updates",
-        9 => "9️⃣ 9 updates",
-        10 => "🔟 10 updates",
-        _ => {
-            update_count = format!("‼️ {} updates", count);
-            update_count.as_ref()
-        }
-    }
-    .to_string();
+    let updates = match JSON["icons"].as_str() {
+        Some("emoji") => match count {
+            0 => format!("{} Up to date", PACKAGE_EMOJIS[0]),
+            1 => format!("{} 1 update", PACKAGE_EMOJIS[1]),
+            2 => format!("{} 2 updates", PACKAGE_EMOJIS[2]),
+            3 => format!("{} 3 updates", PACKAGE_EMOJIS[3]),
+            4 => format!("{} 4 updates", PACKAGE_EMOJIS[4]),
+            5 => format!("{} 5 updates", PACKAGE_EMOJIS[5]),
+            6 => format!("{} 6 updates", PACKAGE_EMOJIS[6]),
+            7 => format!("{} 7 updates", PACKAGE_EMOJIS[7]),
+            8 => format!("{} 8 updates", PACKAGE_EMOJIS[8]),
+            9 => format!("{} 9 updates", PACKAGE_EMOJIS[9]),
+            10 => format!("{} 10 updates", PACKAGE_EMOJIS[10]),
+            _ => format!("{} {} updates", PACKAGE_EMOJIS[11], count),
+        },
+        Some("normal") => match count {
+            0 => format!("{} Up to date", PACKAGE_ICONS[0]),
+            1 => format!("{} 1 update", PACKAGE_ICONS[1]),
+            2 => format!("{} 2 updates", PACKAGE_ICONS[2]),
+            3 => format!("{} 3 updates", PACKAGE_ICONS[3]),
+            4 => format!("{} 4 updates", PACKAGE_ICONS[4]),
+            5 => format!("{} 5 updates", PACKAGE_ICONS[5]),
+            6 => format!("{} 6 updates", PACKAGE_ICONS[6]),
+            7 => format!("{} 7 updates", PACKAGE_ICONS[7]),
+            8 => format!("{} 8 updates", PACKAGE_ICONS[8]),
+            9 => format!("{} 9 updates", PACKAGE_ICONS[9]),
+            _ => format!("{} {} updates", PACKAGE_ICONS[10], count),
+        },
+        Some(&_) | None => match count {
+            0 => "Up to date".to_string(),
+            1 => "1 update".to_string(),
+            2 => "2 updates".to_string(),
+            3 => "3 updates".to_string(),
+            4 => "4 updates".to_string(),
+            5 => "5 updates".to_string(),
+            6 => "6 updates".to_string(),
+            7 => "7 updates".to_string(),
+            8 => "8 updates".to_string(),
+            9 => "9 updates".to_string(),
+            10 => "10 updates".to_string(),
+            _ => "Many updates!".to_string(),
+        },
+    };
     Some(format!("│ {}", updates))
 }
 
@@ -567,40 +656,157 @@ async fn main() {
         println!("{}", calc_whitespace(weather));
     }
 
-    if let Some(release) = release {
-        println!("{}", calc_whitespace(format!("│ 💻 {}", release)));
-    }
-    if let Some(kernel) = kernel {
-        println!("{}", calc_whitespace(format!("│ 🫀 {}", kernel)));
-    }
-    println!("{}", calc_whitespace(format!("│ 🧠 {}", memory)));
-    println!("{}", calc_whitespace(format!("│ 💾 {}", disk)));
+    match JSON["icons"].as_str() {
+        Some("emoji") => {
+            if let Some(release) = release {
+                println!(
+                    "{}",
+                    calc_whitespace(format!("│ {} {}", MISC_EMOJIS[0], release))
+                );
+            }
+            if let Some(kernel) = kernel {
+                println!(
+                    "{}",
+                    calc_whitespace(format!("│ {} {}", MISC_EMOJIS[1], kernel))
+                );
+            }
+            println!(
+                "{}",
+                calc_whitespace(format!("│ {} {}", MISC_EMOJIS[2], memory))
+            );
+            println!(
+                "{}",
+                calc_whitespace(format!("│ {} {}", MISC_EMOJIS[3], disk))
+            );
 
-    match environment.as_ref() {
-        "" => (),
-        _ => println!(
-            "{}",
-            calc_whitespace(format!("│ 🖥️ {}", upper_first(environment)))
-        ),
+            match environment.as_ref() {
+                "" => (),
+                _ => println!(
+                    "{}",
+                    calc_whitespace(format!("│ {} {}", MISC_EMOJIS[4], upper_first(environment)))
+                ),
+            }
+        }
+        Some("normal") => {
+            if let Some(release) = release {
+                println!(
+                    "{}",
+                    calc_whitespace(format!("│ {} {}", MISC_ICONS[0], release))
+                );
+            }
+            if let Some(kernel) = kernel {
+                println!(
+                    "{}",
+                    calc_whitespace(format!("│ {} {}", MISC_ICONS[1], kernel))
+                );
+            }
+            println!(
+                "{}",
+                calc_whitespace(format!("│ {} {}", MISC_ICONS[2], memory))
+            );
+            println!(
+                "{}",
+                calc_whitespace(format!("│ {} {}", MISC_ICONS[3], disk))
+            );
+
+            match environment.as_ref() {
+                "" => (),
+                _ => println!(
+                    "{}",
+                    calc_whitespace(format!("│ {} {}", MISC_ICONS[4], upper_first(environment)))
+                ),
+            }
+        }
+        Some(&_) | None => {
+            if let Some(release) = release {
+                println!("{}", calc_whitespace(format!("│ {}", release)));
+            }
+            if let Some(kernel) = kernel {
+                println!("{}", calc_whitespace(format!("│ {}", kernel)));
+            }
+            println!("{}", calc_whitespace(format!("│ {}", memory)));
+            println!("{}", calc_whitespace(format!("│ {}", disk)));
+
+            match environment.as_ref() {
+                "" => (),
+                _ => println!(
+                    "{}",
+                    calc_whitespace(format!("│ {}", upper_first(environment)))
+                ),
+            }
+        }
     }
 
     if let Some(count) = up_count {
         println!("{}", calc_whitespace(count));
     }
 
-    match package_count {
-        None => (),
-        Some(0) => println!("{}", calc_whitespace("│ 📦 No packages".to_string())),
-        Some(1) => println!("{}", calc_whitespace("│ 📦 1 package".to_string())),
-        Some(n) => println!("{}", calc_whitespace(format!("│ 📦 {} packages", n))),
+    match JSON["icons"].as_str() {
+        Some("emoji") => match package_count {
+            None => (),
+            Some(0) => println!(
+                "{}",
+                calc_whitespace(format!("│ {} No packages", PACKAGE_EMOJIS[12]))
+            ),
+            Some(1) => println!(
+                "{}",
+                calc_whitespace(format!("│ {} 1 package", PACKAGE_EMOJIS[12]))
+            ),
+            Some(n) => println!(
+                "{}",
+                calc_whitespace(format!("│ {} {} packages", PACKAGE_EMOJIS[12], n))
+            ),
+        },
+        Some("normal") => match package_count {
+            None => (),
+            Some(0) => println!(
+                "{}",
+                calc_whitespace(format!("│ {} No packages", PACKAGE_ICONS[11]))
+            ),
+            Some(1) => println!(
+                "{}",
+                calc_whitespace(format!("│ {} 1 package", PACKAGE_ICONS[11]))
+            ),
+            Some(n) => println!(
+                "{}",
+                calc_whitespace(format!("│ {} {} packages", PACKAGE_ICONS[11], n))
+            ),
+        },
+        Some(&_) | None => match package_count {
+            None => (),
+            Some(0) => println!("{}", calc_whitespace("│ No packages".to_string())),
+            Some(1) => println!("{}", calc_whitespace("│ 1 package".to_string())),
+            Some(n) => println!("{}", calc_whitespace(format!("│ {} packages", n))),
+        },
     }
 
-    if let Some(song) = song.as_ref() {
-        println!(
-            "{}",
-            calc_whitespace(format!("│ 🎵 {}", song.trim_matches('\n')))
-        );
+    match JSON["icons"].as_str() {
+        Some("emoji") => {
+            if let Some(song) = song.as_ref() {
+                println!(
+                    "{}",
+                    calc_whitespace(format!("│ {} {}", MISC_EMOJIS[5], song.trim_matches('\n')))
+                );
+            }
+            println!("╰─────────────────────────────────────────────╯")
+        }
+        Some("normal") => {
+            if let Some(song) = song.as_ref() {
+                println!(
+                    "{}",
+                    calc_whitespace(format!("│ {} {}", MISC_ICONS[5], song.trim_matches('\n')))
+                );
+            }
+            println!("╰────────────────────────────────────────────╯")
+        }
+        Some(&_) | None => {
+            if let Some(song) = song.as_ref() {
+                println!(
+                    "{}",
+                    calc_whitespace(format!("│ {}", song.trim_matches('\n')))
+                );
+            }
+            println!("╰────────────────────────────────────────────╯")
+        }
     }
-
-    println!("╰─────────────────────────────────────────────╯");
 }
