@@ -22,4 +22,5 @@ Small terminal welcome program written in rust
 - Grab the latest release binary and config files from the releases page
 - Copy `example_config.json` to `~/.config/hello-rs/config.json`
 - Change the config to your liking
+  - Make sure to remove the comments
 - Add the program to your shell's startup
