@@ -261,25 +261,52 @@ async fn get_package_count() -> Option<i32> {
 fn get_release_blocking() -> Option<String> {
     let rel = linux_os_release().ok()?.pretty_name?; // this performs a blocking read of /etc/os-release
 
-    if rel.len() > 41 {
-        Some(format!("{}...", rel.trim_matches('\"').substring(0, 37)))
-    } else {
-        Some(
-            rel.trim_matches('\"')
-                .trim_end_matches('\n')
-                .trim_end_matches('\"')
-                .to_string(),
-        )
+    match JSON["icons"].as_str() {
+        Some("emoji") => {
+            if rel.len() > 41 {
+                Some(format!("{}...", rel.trim_matches('\"').substring(0, 37)))
+            } else {
+                Some(
+                    rel.trim_matches('\"')
+                        .trim_end_matches('\n')
+                        .trim_end_matches('\"')
+                        .to_string(),
+                )
+            }
+        }
+        Some(&_) | None => {
+            if rel.len() > 42 {
+                Some(format!("{}...", rel.trim_matches('\"').substring(0, 38)))
+            } else {
+                Some(
+                    rel.trim_matches('\"')
+                        .trim_end_matches('\n')
+                        .trim_end_matches('\"')
+                        .to_string(),
+                )
+            }
+        }
     }
 }
 
 #[tracing::instrument]
 fn get_kernel_blocking() -> Option<String> {
     let kernel = os_release().ok()?; // this performs a blocking read of /proc/sys/kernel/osrelease
-    if kernel.len() > 41 {
-        Some(format!("{}...", kernel.substring(0, 37)))
-    } else {
-        Some(kernel.trim_end_matches('\n').to_string())
+    match JSON["icons"].as_str() {
+        Some("emoji") => {
+            if kernel.len() > 41 {
+                Some(format!("{}...", kernel.substring(0, 37)))
+            } else {
+                Some(kernel.trim_end_matches('\n').to_string())
+            }
+        }
+        Some(&_) | None => {
+            if kernel.len() > 42 {
+                Some(format!("{}...", kernel.substring(0, 38)))
+            } else {
+                Some(kernel.trim_end_matches('\n').to_string())
+            }
+        }
     }
 }
 
@@ -294,10 +321,21 @@ fn get_song() -> Option<String> {
     let artists = song.artists()?.join(", ");
     let songname = format!("{} - {}", artists, song.title()?);
 
-    if songname.len() > 41 {
-        Some(format!("{}...", songname.substring(0, 37)))
-    } else {
-        Some(songname.trim_end_matches('\n').to_string())
+    match JSON["icons"].as_str() {
+        Some("emoji") => {
+            if songname.len() > 41 {
+                Some(format!("{}...", songname.substring(0, 37)))
+            } else {
+                Some(songname.trim_end_matches('\n').to_string())
+            }
+        }
+        Some(&_) | None => {
+            if songname.len() > 42 {
+                Some(format!("{}...", songname.substring(0, 38)))
+            } else {
+                Some(songname.trim_end_matches('\n').to_string())
+            }
+        }
     }
 }
 
@@ -560,20 +598,7 @@ async fn count_updates() -> Option<String> {
             9 => format!("{} 9 updates", PACKAGE_ICONS[9]),
             _ => format!("{} {} updates", PACKAGE_ICONS[10], count),
         },
-        Some(&_) | None => match count {
-            0 => "Up to date".to_string(),
-            1 => "1 update".to_string(),
-            2 => "2 updates".to_string(),
-            3 => "3 updates".to_string(),
-            4 => "4 updates".to_string(),
-            5 => "5 updates".to_string(),
-            6 => "6 updates".to_string(),
-            7 => "7 updates".to_string(),
-            8 => "8 updates".to_string(),
-            9 => "9 updates".to_string(),
-            10 => "10 updates".to_string(),
-            _ => "Many updates!".to_string(),
-        },
+        Some(&_) | None => format!("{} updates", count),
     };
     Some(format!("│ {}", updates))
 }

@@ -3,7 +3,7 @@ use once_cell::sync::Lazy;
 use super::read_config;
 
 pub(crate) static JSON: Lazy<serde_json::Value> = Lazy::new(read_config);
-pub(crate) static GREET_ICONS: [&str; 4] = ["", "滛", "", ""];
+pub(crate) static GREET_ICONS: [&str; 4] = ["", "", "", ""];
 pub(crate) static GREET_EMOJIS: [&str; 4] = ["🌇", "🏙️", "🌆", "🌃"];
 pub(crate) static TIME_ICONS: [&str; 12] =
     ["", "", "", "", "", "", "", "", "", "", "", ""];
@@ -11,7 +11,7 @@ pub(crate) static TIME_EMOJIS: [&str; 12] = [
     "🕛", "🕐", "🕑", "🕒", "🕓", "🕔", "🕕", "🕖", "🕗", "🕘", "🕙", "🕚",
 ];
 pub(crate) static WEATHER_ICONS: [&str; 21] = [
-    "滛", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+    "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
     "", "",
 ];
 pub(crate) static WEATHER_EMOJIS: [&str; 21] = [
