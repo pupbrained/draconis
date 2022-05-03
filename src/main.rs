@@ -1,7 +1,7 @@
 pub mod statics;
 
 use {
-    argparse::{ArgumentParser, Store},
+    argparse::{ArgumentParser, Store, StoreTrue},
     chrono::prelude::{Local, Timelike},
     mpris::PlayerFinder,
     once_cell::sync::Lazy,
@@ -36,6 +36,7 @@ enum CommandKind {
 
 fn read_config() -> serde_json::Value {
     let mut path = format!("{}/.config/hello-rs/config.json", env::var("HOME").unwrap());
+    let mut ver = false;
     {
         let mut ap = ArgumentParser::new();
         ap.set_description("A simple greeter for your terminal, made in Rust");
@@ -44,7 +45,14 @@ fn read_config() -> serde_json::Value {
             Store,
             "Specify a path to a config file",
         );
+        ap.refer(&mut ver)
+            .add_option(&["-v", "--version"], StoreTrue, "View program version");
         ap.parse_args_or_exit();
+    }
+
+    if ver {
+        println!("hello-rs v{}", env!("CARGO_PKG_VERSION"));
+        std::process::exit(0);
     }
 
     let file = match File::open(path) {
