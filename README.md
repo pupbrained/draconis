@@ -2,7 +2,9 @@
 
 Small terminal welcome program written in rust
 
-![image](https://user-images.githubusercontent.com/33522919/166180428-6f1721c0-01ea-4365-9ae4-4e1409002442.png)
+![image](https://user-images.githubusercontent.com/33522919/166400318-8702e241-6cbd-4e79-b517-1e0a2f4a97f0.png)
+![image](https://user-images.githubusercontent.com/33522919/166400296-3aaf5238-242f-4ee1-befb-ae4b12725864.png)
+
 
 ## Requirements
 
