@@ -3,7 +3,7 @@ use once_cell::sync::Lazy;
 use super::read_config;
 
 pub(crate) static JSON: Lazy<serde_json::Value> = Lazy::new(read_config);
-pub(crate) static GREET_ICONS: [&str; 4] = ["", "滛", "", "望"];
+pub(crate) static GREET_ICONS: [&str; 4] = ["", "滛", "", ""];
 pub(crate) static GREET_EMOJIS: [&str; 4] = ["🌇", "🏙️", "🌆", "🌃"];
 pub(crate) static TIME_ICONS: [&str; 12] =
     ["", "", "", "", "", "", "", "", "", "", "", ""];

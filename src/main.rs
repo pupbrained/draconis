@@ -445,7 +445,7 @@ fn greeting() -> Option<String> {
             6..=11 => format!("{} Good morning", GREET_ICONS[0]),
             12..=17 => format!("{} Good afternoon", GREET_ICONS[1]),
             18..=22 => format!("{} Good evening", GREET_ICONS[2]),
-            _ => format!("{}Good night", GREET_ICONS[3]),
+            _ => format!("{} Good night", GREET_ICONS[3]),
         },
         Some(&_) | None => match Local::now().hour() {
             6..=11 => "Good morning".to_string(),
