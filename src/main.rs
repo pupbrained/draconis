@@ -120,7 +120,7 @@ fn read_config() -> Config {
                 [weather]
                 enabled = false
 
-				[weather.values]
+		[weather.values]
 
                 [packages]
 
