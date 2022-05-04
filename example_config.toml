@@ -1,0 +1,32 @@
+[main]
+hostname = "john@homepc"
+name = "John"
+
+[icons]
+enabled = true
+kind = "normal"
+
+[time]
+enabled = true
+kind = "12h"
+
+[weather]
+enabled = true
+
+[weather.values]
+api_key = "abc123"
+lang = "en"
+location = "New York"
+units = "imperial"
+
+[packages]
+package_managers = ["pacman", "apt"]
+
+[packages.package_count]
+enabled = true
+
+[packages.update_count]
+enabled = true
+
+[song]
+enabled = true
