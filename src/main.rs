@@ -120,6 +120,8 @@ fn read_config() -> Config {
                 [weather]
                 enabled = false
 
+				[weather.values]
+
                 [packages]
 
                 [song]
