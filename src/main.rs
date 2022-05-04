@@ -37,6 +37,7 @@ struct Config {
 
 #[derive(Deserialize)]
 struct Main {
+    hostname: Option<String>,
     name: Option<String>,
 }
 
@@ -48,6 +49,7 @@ struct Icons {
 
 #[derive(Deserialize)]
 struct Time {
+    enabled: bool,
     kind: Option<String>,
 }
 
@@ -68,6 +70,18 @@ struct WeatherValues {
 #[derive(Deserialize)]
 struct Packages {
     package_managers: Option<toml::Value>,
+    package_count: PackageCount,
+    update_count: UpdateCount,
+}
+
+#[derive(Deserialize)]
+struct PackageCount {
+    enabled: bool,
+}
+
+#[derive(Deserialize)]
+struct UpdateCount {
+    enabled: bool,
 }
 
 #[derive(Deserialize)]
@@ -116,6 +130,7 @@ fn read_config() -> Config {
                 enabled = false
 
                 [time]
+                enabled = false
 
                 [weather]
                 enabled = false
@@ -138,6 +153,9 @@ fn read_config() -> Config {
 }
 
 fn check_update_commmand(command: String) -> Option<(CommandKind, Command)> {
+    if !CONF.packages.update_count.enabled {
+        return None;
+    }
     let tup = match command.as_str() {
         "pacman" => (CommandKind::Pacman, Command::new("checkupdates")),
         "apt" => (CommandKind::Apt, {
@@ -246,6 +264,9 @@ async fn check_updates() -> Option<i32> {
 }
 
 fn check_installed_command(command: String) -> Option<(CommandKind, Command)> {
+    if !CONF.packages.package_count.enabled {
+        return None;
+    }
     let tup = match command.as_str() {
         "pacman" => (CommandKind::Pacman, {
             let mut command = Command::new("pacman");
@@ -632,11 +653,17 @@ fn greeting() -> Option<String> {
 
 #[tracing::instrument]
 fn get_hostname() -> Option<String> {
-    Some(format!("{}@{}", username(), hostname().ok()?))
+    match &CONF.main.hostname {
+        Some(hostname) => Some(hostname.to_string()),
+        None => Some(format!("{}@{}", username(), hostname().ok()?)),
+    }
 }
 
 #[tracing::instrument]
 fn get_datetime() -> Option<String> {
+    if !CONF.time.enabled {
+        return None;
+    }
     let dt = Local::now();
     let time = match CONF.time.kind.as_deref()? {
         "12h" => dt.format("%l:%M %p").to_string(),
