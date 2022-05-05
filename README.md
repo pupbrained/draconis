@@ -4,8 +4,8 @@
 ![image](https://badgen.net/crates/v/draconis)
 ![image](https://badgen.net/github/stars/marsupialgutz/draconis)
 ![image](https://badgen.net/github/commits/marsupialgutz/draconis/master)
-![image](https://badgen.net/github/contributors/marsupialgutz/draconis)
 ![image](https://badgen.net/github/open-prs/marsupialgutz/draconis)
+![image](https://badgen.net/github/contributors/marsupialgutz/draconis)
 
 
 A small terminal welcome program written in rust.
