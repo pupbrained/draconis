@@ -91,10 +91,26 @@ pub(crate) fn get_memory() -> Option<String> {
     }
 
     match System::new().memory() {
-        Ok(mem) => Some(format!(
-            "{} Used",
-            saturating_sub_bytes(mem.total, mem.free)
-        )),
+        Ok(mem) => match CONF.system.mem_usage.free_before_used {
+            Some(false) => Some(format!(
+                "{} Used / {} ({} Free)",
+                saturating_sub_bytes(mem.total, mem.free),
+                mem.total,
+                mem.free
+            )),
+            Some(true) => Some(format!(
+                "{} Free / {} ({} Used)",
+                mem.free,
+                mem.total,
+                saturating_sub_bytes(mem.total, mem.free)
+            )),
+            None => Some(format!(
+                "{} Used / {} ({} Free)",
+                saturating_sub_bytes(mem.total, mem.free),
+                mem.total,
+                mem.free
+            )),
+        },
         Err(x) => panic!("Could not get memory because: {}", x),
     }
 }
@@ -106,7 +122,26 @@ pub(crate) fn get_disk_usage() -> Option<String> {
     }
 
     match System::new().mount_at("/") {
-        Ok(disk) => Some(format!("{} Free", disk.free)),
+        Ok(disk) => match CONF.system.disk_usage.free_before_used {
+            Some(false) => Some(format!(
+                "{} Used / {} ({} Free)",
+                saturating_sub_bytes(disk.total, disk.free),
+                disk.total,
+                disk.free
+            )),
+            Some(true) => Some(format!(
+                "{} Free / {} ({} Used)",
+                disk.free,
+                disk.total,
+                saturating_sub_bytes(disk.total, disk.free)
+            )),
+            None => Some(format!(
+                "{} Free / {} ({} Used)",
+                disk.free,
+                disk.total,
+                saturating_sub_bytes(disk.total, disk.free)
+            )),
+        },
         Err(x) => panic!("Could not get disk usage because: {}", x),
     }
 }

@@ -71,11 +71,13 @@ pub(crate) struct Kernel {
 #[derive(Deserialize)]
 pub(crate) struct MemUsage {
     pub(crate) enabled: bool,
+    pub(crate) free_before_used: Option<bool>,
 }
 
 #[derive(Deserialize)]
 pub(crate) struct DiskUsage {
     pub(crate) enabled: bool,
+    pub(crate) free_before_used: Option<bool>,
 }
 
 #[derive(Deserialize)]

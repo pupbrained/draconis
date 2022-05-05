@@ -35,9 +35,11 @@ enabled = true
 
 [system.mem_usage]
 enabled = true
+free_before_used = false
 
 [system.disk_usage]
 enabled = true
+free_before_used = true
 
 [system.desktop_env]
 enabled = true
