@@ -1,26 +1,49 @@
+# All values held in this file can be changed to whatever you'd
+# like in order to customize hello-rs.
+
 [main]
-hostname = "john@homepc"
-name = "John"
+hostname = "john@homepc" # Defaults to system username@hostname
+name = "John" # Defaults to system realname
+
+[greeting]
+enabled = true
 
 [icons]
-enabled = true
-kind = "normal"
+enabled = true 
+kind = "normal" # normal or emoji
 
 [time]
-enabled = true
-kind = "12h"
+enabled = true 
+kind = "12h" # 12h or 24h
 
 [weather]
 enabled = true
 
 [weather.values]
-api_key = "abc123"
-lang = "en"
-location = "New York"
-units = "imperial"
+api_key = "abc123" # OpenWeatherMap API key
+lang = "en" # Language code for weather
+location = "New York" # Location to get weather for
+units = "imperial" # Units to use for weather
+
+[system]
+
+[system.release]
+enabled = true
+
+[system.kernel]
+enabled = true
+
+[system.mem_usage]
+enabled = true
+
+[system.disk_usage]
+enabled = true
+
+[system.desktop_env]
+enabled = true
 
 [packages]
-package_managers = ["pacman", "apt"]
+package_managers = ["pacman", "apt"] # pacman, apt, xbps, portage, apk, and/or dnf
 
 [packages.package_count]
 enabled = true
