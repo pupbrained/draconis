@@ -29,7 +29,7 @@ use {
 };
 
 fn read_config() -> Config {
-    let mut path = format!("{}/.config/hello-rs/config.toml", env::var("HOME").unwrap());
+    let mut path = format!("{}/.config/draconis/config.toml", env::var("HOME").unwrap());
     let mut ver = false;
     {
         let mut ap = ArgumentParser::new();
@@ -45,7 +45,7 @@ fn read_config() -> Config {
     }
 
     if ver {
-        println!("hello-rs v{}", env!("CARGO_PKG_VERSION"));
+        println!("Draconis v{}", env!("CARGO_PKG_VERSION"));
         std::process::exit(0);
     }
 

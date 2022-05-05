@@ -1,5 +1,5 @@
 # All values held in this file can be changed to whatever you'd
-# like in order to customize hello-rs.
+# like in order to customize Draconis.
 
 [main]
 hostname = "john@homepc" # Defaults to system username@hostname

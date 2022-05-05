@@ -1,4 +1,4 @@
-# hello-rs
+# Draconis
 
 Small terminal welcome program written in rust
 
