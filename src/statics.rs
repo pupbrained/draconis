@@ -1,7 +1,7 @@
-use once_cell::sync::Lazy;
-
-use super::read_config;
-use crate::conf_structs::Config;
+use {
+    crate::{conf_structs::Config, config::read_config},
+    once_cell::sync::Lazy,
+};
 
 pub(crate) static CONF: Lazy<Config> = Lazy::new(read_config);
 pub(crate) static GREET_ICONS: [&str; 4] = ["", "", "", ""];
