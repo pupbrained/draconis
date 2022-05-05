@@ -1,4 +1,4 @@
-use {crate::statics::CONF, unicode_segmentation::UnicodeSegmentation};
+use {crate::util::statics::CONF, unicode_segmentation::UnicodeSegmentation};
 
 pub(crate) fn upper_first(s: String) -> String {
     let mut c = s.chars();

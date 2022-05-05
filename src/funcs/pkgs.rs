@@ -1,5 +1,5 @@
 use {
-    crate::statics::{CONF, PACKAGE_EMOJIS, PACKAGE_ICONS},
+    crate::util::statics::{CONF, PACKAGE_EMOJIS, PACKAGE_ICONS},
     std::process::Stdio,
     tokio::{
         io::{AsyncBufReadExt, BufReader},

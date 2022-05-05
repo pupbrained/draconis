@@ -1,5 +1,5 @@
 use {
-    crate::statics::CONF,
+    crate::util::statics::CONF,
     std::env,
     substring::Substring,
     sys_info::{linux_os_release, os_release},

@@ -1,5 +1,5 @@
 use {
-    crate::statics::{CONF, GREET_EMOJIS, GREET_ICONS},
+    crate::util::statics::{CONF, GREET_EMOJIS, GREET_ICONS},
     chrono::{Local, Timelike},
     sys_info::hostname,
     whoami::{realname, username},

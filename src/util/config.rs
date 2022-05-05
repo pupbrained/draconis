@@ -1,5 +1,5 @@
 use {
-    crate::conf_structs::Config,
+    crate::util::conf_structs::Config,
     argparse::{ArgumentParser, Store, StoreTrue},
     std::{env, io::ErrorKind},
 };

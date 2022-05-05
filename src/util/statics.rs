@@ -1,5 +1,5 @@
 use {
-    crate::{conf_structs::Config, config::read_config},
+    crate::util::{conf_structs::Config, config::read_config},
     once_cell::sync::Lazy,
 };
 

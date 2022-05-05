@@ -1,5 +1,5 @@
 use {
-    crate::statics::{CONF, TIME_EMOJIS, TIME_ICONS, WEATHER_EMOJIS, WEATHER_ICONS},
+    crate::util::statics::{CONF, TIME_EMOJIS, TIME_ICONS, WEATHER_EMOJIS, WEATHER_ICONS},
     chrono::{Local, Timelike},
     mpris::PlayerFinder,
     openweathermap::weather,

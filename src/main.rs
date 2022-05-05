@@ -1,21 +1,20 @@
-pub mod conf_structs;
-pub mod config;
-pub mod formatting;
-pub mod greet;
-pub mod misc;
-pub mod pkgs;
-pub mod statics;
-pub mod system_info;
+pub mod funcs;
+pub mod util;
 
 use {
     crate::{
-        formatting::{calc_whitespace, calc_with_hostname, upper_first},
-        greet::{get_hostname, greeting},
-        misc::{get_datetime, get_song, get_weather},
-        pkgs::{count_updates, get_package_count},
-        statics::{CONF, MISC_EMOJIS, MISC_ICONS, PACKAGE_EMOJIS, PACKAGE_ICONS},
-        system_info::{
-            get_disk_usage, get_environment, get_kernel_blocking, get_memory, get_release_blocking,
+        funcs::{
+            greet::{get_hostname, greeting},
+            misc::{get_datetime, get_song, get_weather},
+            pkgs::{count_updates, get_package_count},
+            system_info::{
+                get_disk_usage, get_environment, get_kernel_blocking, get_memory,
+                get_release_blocking,
+            },
+        },
+        util::{
+            formatting::{calc_whitespace, calc_with_hostname, upper_first},
+            statics::{CONF, MISC_EMOJIS, MISC_ICONS, PACKAGE_EMOJIS, PACKAGE_ICONS},
         },
     },
     once_cell::sync::Lazy,
