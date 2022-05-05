@@ -11,6 +11,7 @@ pub(crate) fn get_release_blocking() -> Option<String> {
     if !CONF.system.release.enabled {
         return None;
     }
+
     let rel = linux_os_release().ok()?.pretty_name?; // this performs a blocking read of /etc/os-release
 
     if CONF.icons.enabled {
@@ -57,6 +58,7 @@ pub(crate) fn get_kernel_blocking() -> Option<String> {
     if !CONF.system.kernel.enabled {
         return None;
     }
+
     let kernel = os_release().ok()?; // this performs a blocking read of /proc/sys/kernel/osrelease
     if CONF.icons.enabled {
         match CONF.icons.kind.as_deref() {
@@ -87,6 +89,7 @@ pub(crate) fn get_memory() -> Option<String> {
     if !CONF.system.mem_usage.enabled {
         return None;
     }
+
     match System::new().memory() {
         Ok(mem) => Some(format!(
             "{} Used",
@@ -101,6 +104,7 @@ pub(crate) fn get_disk_usage() -> Option<String> {
     if !CONF.system.disk_usage.enabled {
         return None;
     }
+
     match System::new().mount_at("/") {
         Ok(disk) => Some(format!("{} Free", disk.free)),
         Err(x) => panic!("Could not get disk usage because: {}", x),
@@ -108,10 +112,14 @@ pub(crate) fn get_disk_usage() -> Option<String> {
 }
 
 #[tracing::instrument]
-pub(crate) fn get_environment() -> String {
+pub(crate) fn get_environment() -> Option<String> {
     if !CONF.system.desktop_env.enabled {
-        return String::new();
+        return None;
     }
-    env::var::<String>(ToString::to_string(&"XDG_CURRENT_DESKTOP"))
-        .unwrap_or_else(|_| env::var(&"XDG_SESSION_DESKTOP").unwrap_or_else(|_| "".to_string()))
+
+    Some(
+        env::var::<String>(ToString::to_string(&"XDG_CURRENT_DESKTOP")).unwrap_or_else(|_| {
+            env::var(&"XDG_SESSION_DESKTOP").unwrap_or_else(|_| "".to_string())
+        }),
+    )
 }

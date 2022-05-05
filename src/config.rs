@@ -1,8 +1,8 @@
-use std::{env, io::ErrorKind};
-
-use argparse::{ArgumentParser, Store, StoreTrue};
-
-use crate::conf_structs::Config;
+use {
+    crate::conf_structs::Config,
+    argparse::{ArgumentParser, Store, StoreTrue},
+    std::{env, io::ErrorKind},
+};
 
 pub(crate) fn read_config() -> Config {
     let mut path = format!("{}/.config/draconis/config.toml", env::var("HOME").unwrap());

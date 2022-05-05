@@ -46,6 +46,7 @@ fn check_update_commmand(command: String) -> Option<(CommandKind, Command)> {
     if !CONF.packages.update_count.enabled {
         return None;
     }
+
     let tup = match command.as_str() {
         "pacman" => (CommandKind::Pacman, Command::new("checkupdates")),
         "apt" => (CommandKind::Apt, {
@@ -172,6 +173,7 @@ fn check_installed_command(command: String) -> Option<(CommandKind, Command)> {
     if !CONF.packages.package_count.enabled {
         return None;
     }
+
     let tup = match command.as_str() {
         "pacman" => (CommandKind::Pacman, {
             let mut command = Command::new("pacman");

@@ -18,6 +18,7 @@ pub(crate) fn greeting() -> Option<String> {
     if !CONF.greeting.enabled {
         return None;
     }
+
     let name = if CONF.main.name.is_none() {
         realname()
     } else {

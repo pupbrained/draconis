@@ -166,6 +166,7 @@ pub(crate) fn get_datetime() -> Option<String> {
     if !CONF.time.enabled {
         return None;
     }
+
     let dt = Local::now();
     let time = match CONF.time.kind.as_deref()? {
         "12h" => dt.format("%l:%M %p").to_string(),

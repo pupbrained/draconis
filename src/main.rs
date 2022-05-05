@@ -122,16 +122,15 @@ async fn main() {
                     );
                 }
 
-                match environment.as_ref() {
-                    "" => (),
-                    _ => println!(
+                if let Some(environment) = environment {
+                    println!(
                         "{}",
                         calc_whitespace(format!(
                             "│ {} {}",
                             MISC_EMOJIS[4],
                             upper_first(environment)
                         ))
-                    ),
+                    );
                 }
             }
             Some("normal") => {
@@ -160,16 +159,15 @@ async fn main() {
                     );
                 }
 
-                match environment.as_ref() {
-                    "" => (),
-                    _ => println!(
+                if let Some(environment) = environment {
+                    println!(
                         "{}",
                         calc_whitespace(format!(
                             "│ {} {}",
                             MISC_ICONS[4],
                             upper_first(environment)
                         ))
-                    ),
+                    );
                 }
             }
             Some(&_) | None => {
@@ -185,12 +183,11 @@ async fn main() {
                 if let Some(disk) = disk {
                     println!("{}", calc_whitespace(format!("│ {}", disk)));
                 }
-                match environment.as_ref() {
-                    "" => (),
-                    _ => println!(
+                if let Some(environment) = environment {
+                    println!(
                         "{}",
                         calc_whitespace(format!("│ {}", upper_first(environment)))
-                    ),
+                    );
                 }
             }
         }
@@ -208,12 +205,11 @@ async fn main() {
             println!("{}", calc_whitespace(format!("│ {}", disk)));
         }
 
-        match environment.as_ref() {
-            "" => (),
-            _ => println!(
+        if let Some(environment) = environment {
+            println!(
                 "{}",
                 calc_whitespace(format!("│ {}", upper_first(environment)))
-            ),
+            );
         }
     }
 
