@@ -1,5 +1,13 @@
 # Draconis
 
+![image](https://badgen.net/github/release/marsupialgutz/draconis)
+![image](https://badgen.net/github/stars/marsupialgutz/draconis)
+![image](https://badgen.net/github/commits/marsupialgutz/draconis/master)
+![image](https://badgen.net/github/contributors/marsupialgutz/draconis)
+![image](https://badgen.net/github/open-prs/marsupialgutz/draconis)
+![image](https://badgen.net/github/last-commit/marsupialgutz/draconis/master)
+
+
 Small terminal welcome program written in rust
 
 ![image](https://user-images.githubusercontent.com/33522919/166400318-8702e241-6cbd-4e79-b517-1e0a2f4a97f0.png)
