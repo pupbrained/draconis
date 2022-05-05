@@ -18,6 +18,6 @@ Small terminal welcome program written in rust
 ## How to use
 
 - Grab the latest release binary and config files from the releases page
-- Copy `example_config.toml` to `~/.config/hello-rs/config.toml`
+- Copy `example_config.toml` to `~/.config/draconis/config.toml`
 - Change the config to your liking
 - Add the program to your shell's startup
