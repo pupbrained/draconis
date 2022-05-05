@@ -1,6 +1,7 @@
 # Draconis
 
 ![image](https://badgen.net/github/release/marsupialgutz/draconis)
+![image](https://badgen.net/crates/v/draconis)
 ![image](https://badgen.net/github/stars/marsupialgutz/draconis)
 ![image](https://badgen.net/github/commits/marsupialgutz/draconis/master)
 ![image](https://badgen.net/github/contributors/marsupialgutz/draconis)
