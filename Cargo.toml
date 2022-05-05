@@ -7,6 +7,7 @@ name = "hello-rs"
 readme = "README.md"
 repository = "https://github.com/marsupialgutz/hello-rs"
 version = "2.4.1"
+excluse = [".gitignore"]
 
 [dependencies]
 argparse = "0.2"
