@@ -1,5 +1,5 @@
 [package]
-author = "marsupialgutz"
+authors = ["marsupialgutz"]
 description = "Small terminal welcome program written in rust"
 edition = "2021"
 license-file = "LICENSE"
