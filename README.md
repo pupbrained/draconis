@@ -6,7 +6,6 @@
 ![image](https://badgen.net/github/commits/marsupialgutz/draconis/master)
 ![image](https://badgen.net/github/contributors/marsupialgutz/draconis)
 ![image](https://badgen.net/github/open-prs/marsupialgutz/draconis)
-![image](https://badgen.net/github/last-commit/marsupialgutz/draconis/master)
 
 
 A small terminal welcome program written in rust.
