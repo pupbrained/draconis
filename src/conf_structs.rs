@@ -41,7 +41,6 @@ pub(crate) struct Weather {
     pub(crate) values: WeatherValues,
 }
 
-
 #[derive(Deserialize)]
 pub(crate) struct WeatherValues {
     pub(crate) api_key: Option<String>,
