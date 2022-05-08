@@ -196,7 +196,7 @@ pub(crate) fn get_datetime() -> Option<String> {
                 } else {
                     dt.hour().try_into().unwrap()
                 };
-                TIME_ICONS[index.min(12)]
+                TIME_ICONS[index.min(11)]
             }
             Some(&_) | None => "",
         }
