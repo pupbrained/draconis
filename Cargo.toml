@@ -6,7 +6,7 @@ license-file = "LICENSE"
 name = "draconis"
 readme = "README.md"
 repository = "https://github.com/marsupialgutz/draconis"
-version = "2.4.2"
+version = "2.4.3"
 
 [dependencies]
 argparse = "0.2"
@@ -24,3 +24,4 @@ tracing = "0.1"
 tracing-subscriber = {version = "0.3", features = ["env-filter"]}
 unicode-segmentation = "1.9"
 whoami = "1.2.1"
+text_io = "0.1"

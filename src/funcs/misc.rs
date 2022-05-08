@@ -183,15 +183,15 @@ pub(crate) fn get_datetime() -> Option<String> {
     let time_icon = if CONF.icons.enabled {
         match CONF.icons.kind.as_deref() {
             Some("emoji") => {
-                let index: usize = if dt.hour() > 12 {
+                let index: usize = if dt.hour() >= 12 {
                     (dt.hour() - 12).try_into().unwrap()
                 } else {
                     dt.hour().try_into().unwrap()
                 };
-                TIME_EMOJIS[index.min(12)]
+                TIME_EMOJIS[index.min(11)]
             }
             Some("normal") => {
-                let index: usize = if dt.hour() > 12 {
+                let index: usize = if dt.hour() >= 12 {
                     (dt.hour() - 12).try_into().unwrap()
                 } else {
                     dt.hour().try_into().unwrap()

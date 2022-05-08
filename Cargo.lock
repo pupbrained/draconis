@@ -173,7 +173,7 @@ dependencies = [
 
 [[package]]
 name = "draconis"
-version = "2.4.2"
+version = "2.4.3"
 dependencies = [
  "argparse",
  "chrono",
@@ -184,6 +184,7 @@ dependencies = [
  "substring",
  "sys-info",
  "systemstat",
+ "text_io",
  "tokio",
  "toml",
  "tracing",
@@ -1137,6 +1138,12 @@ dependencies = [
  "nom",
  "winapi",
 ]
+
+[[package]]
+name = "text_io"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "442f2674e6bd8489052b958e0eaebd89c26eefa3be9dc359d1e2ecccdc510f45"
 
 [[package]]
 name = "thread_local"
