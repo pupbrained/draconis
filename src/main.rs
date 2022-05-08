@@ -19,18 +19,14 @@ use {
     },
     once_cell::sync::Lazy,
     std::time::Instant,
-    tracing_subscriber::{
-        fmt::{self, format::FmtSpan},
-        prelude::*,
-        EnvFilter,
-    },
+    tracing_subscriber::{fmt::{layer, format::FmtSpan}, prelude::*, EnvFilter},
 };
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::registry()
         .with(
-            fmt::layer()
+            layer()
                 .pretty()
                 .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE),
         )
