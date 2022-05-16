@@ -8,7 +8,7 @@
 ![image](https://badgen.net/github/contributors/marsupialgutz/draconis)
 
 
-A small terminal welcome program written in rust.
+🪐 An out-of-this-world greeter for your terminal
 
 ![image](https://user-images.githubusercontent.com/33522919/166400318-8702e241-6cbd-4e79-b517-1e0a2f4a97f0.png)
 ![image](https://user-images.githubusercontent.com/33522919/166400296-3aaf5238-242f-4ee1-befb-ae4b12725864.png)
