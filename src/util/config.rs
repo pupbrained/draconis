@@ -1,5 +1,5 @@
 use {
-    crate::util::{conf_structs::Config, make_config::make_config},
+    crate::util::{conf_structs::Config},
     argparse::{ArgumentParser, Store, StoreTrue},
     std::{env, io::ErrorKind},
 };
@@ -7,7 +7,6 @@ use {
 pub(crate) fn read_config() -> Config {
     let mut path = format!("{}/.config/draconis/config.toml", env::var("HOME").unwrap());
     let mut ver = false;
-    let mut new_config = false;
     {
         let mut ap = ArgumentParser::new();
         ap.set_description("A simple greeter for your terminal, made in Rust");
@@ -18,18 +17,12 @@ pub(crate) fn read_config() -> Config {
         );
         ap.refer(&mut ver)
             .add_option(&["-v", "--version"], StoreTrue, "View program version");
-        ap.refer(&mut new_config)
-            .add_option(&["-n", "--new"], StoreTrue, "Create a new config file");
         ap.parse_args_or_exit();
     }
 
     if ver {
         println!("Draconis v{}", env!("CARGO_PKG_VERSION"));
         std::process::exit(0);
-    }
-
-    if new_config {
-        make_config();
     }
 
     let content = match std::fs::read_to_string(path) {

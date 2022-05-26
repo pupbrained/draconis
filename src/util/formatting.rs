@@ -1,4 +1,7 @@
-use {crate::util::statics::CONF, unicode_segmentation::UnicodeSegmentation};
+use {
+    crate::util::statics::CONF, unicode_segmentation::UnicodeSegmentation,
+    unicode_width::UnicodeWidthStr,
+};
 
 pub(crate) fn upper_first(s: String) -> String {
     let mut c = s.chars();
@@ -10,6 +13,12 @@ pub(crate) fn upper_first(s: String) -> String {
 
 pub(crate) fn calc_whitespace(text: String) -> String {
     let size = 45 - text.graphemes(true).count();
+    let fs = format!("{}{}", " ".repeat(size), "│");
+    format!("{}{}", text, fs)
+}
+
+pub(crate) fn calc_whitespace_song(text: String) -> String {
+    let size = 47 - UnicodeWidthStr::width_cjk(text.as_str());
     let fs = format!("{}{}", " ".repeat(size), "│");
     format!("{}{}", text, fs)
 }

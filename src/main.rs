@@ -13,13 +13,17 @@ use {
             },
         },
         util::{
-            formatting::{calc_whitespace, calc_with_hostname, upper_first},
+            formatting::{calc_whitespace, calc_whitespace_song, calc_with_hostname, upper_first},
             statics::{CONF, MISC_EMOJIS, MISC_ICONS, PACKAGE_EMOJIS, PACKAGE_ICONS},
         },
     },
     once_cell::sync::Lazy,
     std::time::Instant,
-    tracing_subscriber::{fmt::{layer, format::FmtSpan}, prelude::*, EnvFilter},
+    tracing_subscriber::{
+        fmt::{format::FmtSpan, layer},
+        prelude::*,
+        EnvFilter,
+    },
 };
 
 #[tokio::main]
@@ -73,7 +77,7 @@ async fn main() {
     if let Some(hostname) = hostname {
         println!(
             "{}",
-            calc_with_hostname(format!("╭─\x1b[32m{}\x1b[0m", hostname))
+            calc_with_hostname(format!("╭─── \x1b[32m{}\x1b[0m ", hostname))
         );
     }
 
@@ -266,7 +270,7 @@ async fn main() {
                 if let Some(song) = song.as_ref() {
                     println!(
                         "{}",
-                        calc_whitespace(format!(
+                        calc_whitespace_song(format!(
                             "│ {} {}",
                             MISC_EMOJIS[5],
                             song.trim_matches('\n')
@@ -279,7 +283,11 @@ async fn main() {
                 if let Some(song) = song.as_ref() {
                     println!(
                         "{}",
-                        calc_whitespace(format!("│ {} {}", MISC_ICONS[5], song.trim_matches('\n')))
+                        calc_whitespace_song(format!(
+                            "│ {} {}",
+                            MISC_ICONS[5],
+                            song.trim_matches('\n')
+                        ))
                     );
                 }
                 println!("╰────────────────────────────────────────────╯")
@@ -288,7 +296,7 @@ async fn main() {
                 if let Some(song) = song.as_ref() {
                     println!(
                         "{}",
-                        calc_whitespace(format!("│ {}", song.trim_matches('\n')))
+                        calc_whitespace_song(format!("│ {}", song.trim_matches('\n')))
                     );
                 }
                 println!("╰────────────────────────────────────────────╯")
@@ -298,7 +306,7 @@ async fn main() {
         if let Some(song) = song.as_ref() {
             println!(
                 "{}",
-                calc_whitespace(format!("│ {}", song.trim_matches('\n')))
+                calc_whitespace_song(format!("│ {}", song.trim_matches('\n')))
             );
         }
         println!("╰────────────────────────────────────────────╯")
