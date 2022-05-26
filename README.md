@@ -19,9 +19,8 @@
 
 ## Important
 
-- This program uses the openweathermap API for fetching the weather. You must have an API key from openweathermap for it to work.
+- This program uses the openweathermap API for fetching the weather. You must have an API key from openweathermap if you want to use the weather function.
 - Update checking and package counting will take a long time, and slow down the program by quite a bit. This cannot be avoided because of the fact that these checks require external system commands. Only use these options if you don't mind losing a second or two of time every time you run the program.
-- The config format has recently **changed from JSON to TOML.** Make sure you're using the TOML file properly from now on.
 
 ## How to use
 
