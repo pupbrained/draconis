@@ -21,6 +21,7 @@
 
 - This program uses the openweathermap API for fetching the weather. You must have an API key from openweathermap if you want to use the weather function.
 - Update checking and package counting will take a long time, and slow down the program by quite a bit. This cannot be avoided because of the fact that these checks require external system commands. Only use these options if you don't mind losing a second or two of time every time you run the program.
+  - NixOS does not support package update counting.
 
 ## How to use
 
