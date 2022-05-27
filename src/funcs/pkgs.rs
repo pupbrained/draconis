@@ -1,3 +1,5 @@
+use std::env;
+
 use {
     crate::util::statics::{CONF, PACKAGE_EMOJIS, PACKAGE_ICONS},
     std::process::Stdio,
@@ -209,7 +211,7 @@ fn check_installed_command(command: String) -> Option<(CommandKind, Command)> {
         }),
         "nix-user" => (CommandKind::NixUser, {
             let mut command = Command::new("nix-store");
-            let user = env!("USER");
+            let user = env::var("USER".to_string()).unwrap_or("UNKNOWN".to_string());
             command.args(&["-qR", format!("/home/{user}/.nix-profile").as_str()]);
             command
         }),
