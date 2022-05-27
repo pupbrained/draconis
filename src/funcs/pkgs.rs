@@ -15,6 +15,8 @@ enum CommandKind {
     Portage,
     Apk,
     Dnf,
+    NixUser,
+    NixSystem,
 }
 
 async fn count_lines(skip: i32, mut reader: BufReader<ChildStdout>) -> Option<i32> {
@@ -203,6 +205,17 @@ fn check_installed_command(command: String) -> Option<(CommandKind, Command)> {
         "dnf" => (CommandKind::Dnf, {
             let mut command = Command::new("dnf");
             command.args(&["list", "installed"]);
+            command
+        }),
+        "nix-user" => (CommandKind::NixUser, {
+            let mut command = Command::new("nix-store");
+            let user = env!("USER");
+            command.args(&["-qR", format!("/home/{user}/.nix-profile").as_str()]);
+            command
+        }),
+        "nix-system" => (CommandKind::NixSystem, {
+            let mut command = Command::new("nix-store");
+            command.args(&["-qR", "/run/current-system/sw"]);
             command
         }),
         other => {
