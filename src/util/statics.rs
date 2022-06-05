@@ -4,6 +4,7 @@ use {
 };
 
 pub(crate) static CONF: Lazy<Config> = Lazy::new(read_config);
+
 pub(crate) static GREET_ICONS: [&str; 4] = ["", "", "", ""];
 pub(crate) static GREET_EMOJIS: [&str; 4] = ["🌇", "🏙️", "🌆", "🌃"];
 pub(crate) static TIME_ICONS: [&str; 12] =

@@ -13,12 +13,14 @@ use {
             },
         },
         util::{
-            formatting::{calc_whitespace, calc_whitespace_song, calc_with_hostname, upper_first},
+            formatting::{
+                calc_bottom, calc_whitespace, calc_whitespace_song, calc_with_hostname, upper_first,
+            },
             statics::{CONF, MISC_EMOJIS, MISC_ICONS, PACKAGE_EMOJIS, PACKAGE_ICONS},
         },
     },
     once_cell::sync::Lazy,
-    std::time::Instant,
+    std::{process::exit, time::Instant},
     tracing_subscriber::{
         fmt::{format::FmtSpan, layer},
         prelude::*,
@@ -28,6 +30,11 @@ use {
 
 #[tokio::main]
 async fn main() {
+    if CONF.util.width < 50 {
+        eprintln!("Width attribute must be at least 50, please change it.");
+        exit(1);
+    }
+
     tracing_subscriber::registry()
         .with(
             layer()
@@ -277,7 +284,6 @@ async fn main() {
                         ))
                     );
                 }
-                println!("╰─────────────────────────────────────────────╯")
             }
             Some("normal") => {
                 if let Some(song) = song.as_ref() {
@@ -290,7 +296,6 @@ async fn main() {
                         ))
                     );
                 }
-                println!("╰────────────────────────────────────────────╯")
             }
             Some(&_) | None => {
                 if let Some(song) = song.as_ref() {
@@ -299,7 +304,6 @@ async fn main() {
                         calc_whitespace_song(format!("│ {}", song.trim_matches('\n')))
                     );
                 }
-                println!("╰────────────────────────────────────────────╯")
             }
         }
     } else {
@@ -309,6 +313,6 @@ async fn main() {
                 calc_whitespace_song(format!("│ {}", song.trim_matches('\n')))
             );
         }
-        println!("╰────────────────────────────────────────────╯")
     }
+    println!("{}", calc_bottom("╰".into()));
 }

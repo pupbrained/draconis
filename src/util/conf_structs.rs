@@ -3,6 +3,7 @@ use serde::Deserialize;
 #[derive(Deserialize)]
 pub(crate) struct Config {
     pub(crate) main: Main,
+    pub(crate) util: Util,
     pub(crate) greeting: Greeting,
     pub(crate) icons: Icons,
     pub(crate) time: Time,
@@ -16,6 +17,11 @@ pub(crate) struct Config {
 pub(crate) struct Main {
     pub(crate) hostname: Option<String>,
     pub(crate) name: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct Util {
+    pub(crate) width: i32,
 }
 
 #[derive(Deserialize)]

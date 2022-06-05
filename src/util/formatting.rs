@@ -12,13 +12,13 @@ pub(crate) fn upper_first(s: String) -> String {
 }
 
 pub(crate) fn calc_whitespace(text: String) -> String {
-    let size = 45 - text.graphemes(true).count();
+    let size = (CONF.util.width - 5) as usize - text.graphemes(true).count();
     let fs = format!("{}{}", " ".repeat(size), "│");
     format!("{}{}", text, fs)
 }
 
 pub(crate) fn calc_whitespace_song(text: String) -> String {
-    let size = 47 - UnicodeWidthStr::width_cjk(text.as_str());
+    let size = (CONF.util.width - 3) as usize - UnicodeWidthStr::width_cjk(text.as_str());
     let fs = format!("{}{}", " ".repeat(size), "│");
     format!("{}{}", text, fs)
 }
@@ -26,13 +26,27 @@ pub(crate) fn calc_whitespace_song(text: String) -> String {
 pub(crate) fn calc_with_hostname(text: String) -> String {
     let size = if CONF.icons.enabled {
         match CONF.icons.kind.as_deref() {
-            Some("emoji") => 55 - text.graphemes(true).count(),
-            Some(&_) | None => 54 - text.graphemes(true).count(),
+            Some("emoji") => (CONF.util.width + 5) as usize - text.graphemes(true).count(),
+            Some(&_) | None => (CONF.util.width + 4) as usize - text.graphemes(true).count(),
         }
     } else {
-        54 - text.graphemes(true).count()
+        (CONF.util.width + 4) as usize - text.graphemes(true).count()
     };
 
     let fs = format!("{}{}", "─".repeat(size), "╮");
+    format!("{}{}", text, fs)
+}
+
+pub(crate) fn calc_bottom(text: String) -> String {
+    let size = if CONF.icons.enabled {
+        match CONF.icons.kind.as_deref() {
+            Some("emoji") => (CONF.util.width - 4) as usize - text.graphemes(true).count(),
+            Some(&_) | None => (CONF.util.width - 5) as usize - text.graphemes(true).count(),
+        }
+    } else {
+        (CONF.util.width - 5) as usize - text.graphemes(true).count()
+    };
+
+    let fs = format!("{}{}", "─".repeat(size), "╯");
     format!("{}{}", text, fs)
 }
