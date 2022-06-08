@@ -306,13 +306,11 @@ async fn main() {
                 }
             }
         }
-    } else {
-        if let Some(song) = song.as_ref() {
-            println!(
-                "{}",
-                calc_whitespace_song(format!("│ {}", song.trim_matches('\n')))
-            );
-        }
+    } else if let Some(song) = song.as_ref() {
+        println!(
+            "{}",
+            calc_whitespace_song(format!("│ {}", song.trim_matches('\n')))
+        );
     }
     println!("{}", calc_bottom("╰".into()));
 }

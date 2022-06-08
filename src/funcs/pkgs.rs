@@ -211,7 +211,7 @@ fn check_installed_command(command: String) -> Option<(CommandKind, Command)> {
         }),
         "nix-user" => (CommandKind::NixUser, {
             let mut command = Command::new("nix-store");
-            let user = env::var("USER".to_string()).unwrap_or("UNKNOWN".to_string());
+            let user = env::var("USER").unwrap_or_else(|_| "UNKNOWN".to_string());
             command.args(&["-qR", format!("/home/{}/.nix-profile", user).as_str()]);
             command
         }),
