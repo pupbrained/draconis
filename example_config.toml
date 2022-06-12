@@ -5,6 +5,9 @@
 hostname = "john@homepc" # Defaults to system username@hostname
 name = "John" # Defaults to system realname
 
+[util]
+width = 55
+
 [greeting]
 enabled = true
 
