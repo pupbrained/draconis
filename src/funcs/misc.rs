@@ -20,22 +20,31 @@ pub(crate) fn get_song() -> Option<String> {
     if CONF.icons.enabled {
         match CONF.icons.kind.as_deref() {
             Some("emoji") => {
-                if songname.len() > 41 {
-                    Some(format!("{}...", songname.substring(0, 37)))
+                if songname.len() > CONF.util.width as usize {
+                    Some(format!(
+                        "{}...",
+                        songname.substring(0, (CONF.util.width - 14) as usize)
+                    ))
                 } else {
                     Some(songname.trim_end_matches('\n').to_string())
                 }
             }
             Some(&_) | None => {
-                if songname.len() > 42 {
-                    Some(format!("{}...", songname.substring(0, 38)))
+                if songname.len() > CONF.util.width as usize {
+                    Some(format!(
+                        "{}...",
+                        songname.substring(0, (CONF.util.width - 14) as usize)
+                    ))
                 } else {
                     Some(songname.trim_end_matches('\n').to_string())
                 }
             }
         }
-    } else if songname.len() > 42 {
-        Some(format!("{}...", songname.substring(0, 38)))
+    } else if songname.len() > CONF.util.width as usize {
+        Some(format!(
+            "{}...",
+            songname.substring(0, (CONF.util.width - 14) as usize)
+        ))
     } else {
         Some(songname.trim_end_matches('\n').to_string())
     }
