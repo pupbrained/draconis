@@ -153,10 +153,10 @@ pub(crate) fn get_environment() -> Option<String> {
     }
 
     Some(
-        env::var::<String>(ToString::to_string(&"DESKTOP_SESSION"))
+        env::var::<String>(ToString::to_string(&"XDG_CURRENT_DESKTOP"))
             .unwrap_or_else(|_| {
-                env::var(&"XDG_CURRENT_DESKTOP").unwrap_or_else(|_| {
-                    env::var::<String>(ToString::to_string(&"XDG_SESSION_DESKTOP"))
+                env::var(&"XDG_SESSION_DESKTOP").unwrap_or_else(|_| {
+                    env::var::<String>(ToString::to_string(&"DESKTOP_SESSION"))
                         .unwrap_or_else(|_| "Unknown".to_string())
                 })
             })
