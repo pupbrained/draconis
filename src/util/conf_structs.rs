@@ -111,4 +111,5 @@ pub(crate) struct UpdateCount {
 #[derive(Deserialize)]
 pub(crate) struct Song {
     pub(crate) enabled: bool,
+    pub(crate) mode: Option<String>,
 }

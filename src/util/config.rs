@@ -85,6 +85,8 @@ pub(crate) fn read_config() -> Config {
                     r#"
                 [main]
 
+                [util]
+
                 [greeting]
                 enabled = true
 
