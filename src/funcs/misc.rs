@@ -1,3 +1,5 @@
+use std::process::Command;
+
 use {
     crate::util::statics::{CONF, TIME_EMOJIS, TIME_ICONS, WEATHER_EMOJIS, WEATHER_ICONS},
     chrono::{Local, Timelike},
@@ -12,10 +14,19 @@ pub(crate) fn get_song() -> Option<String> {
         return None;
     }
 
-    let player = PlayerFinder::new().ok()?.find_all().ok()?;
-    let song = player.first()?.get_metadata().ok()?; // this is blocking
-    let artists = song.artists()?.join(", ");
-    let songname = format!("{} - {}", artists, song.title()?);
+    let songname;
+    if CONF.song.mode == Some("playerctl".into()) {
+        let song = Command::new("playerctl")
+            .args(&["metadata", "-f", "{{ artist }} - {{ title }}"])
+            .output()
+            .unwrap();
+        songname = String::from_utf8_lossy(&song.stdout).to_string();
+    } else {
+        let player = PlayerFinder::new().ok()?.find_all().ok()?;
+        let song = player.first()?.get_metadata().ok()?; // this is blocking
+        let artists = song.artists()?.join(", ");
+        songname = format!("{} - {}", artists, song.title()?);
+    }
 
     if CONF.icons.enabled {
         match CONF.icons.kind.as_deref() {
