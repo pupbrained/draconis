@@ -21,6 +21,9 @@ pub(crate) fn get_song() -> Option<String> {
             .output()
             .unwrap();
         songname = String::from_utf8_lossy(&song.stdout).to_string();
+        if songname.is_empty() {
+            return None;
+        }
     } else {
         let player = PlayerFinder::new().ok()?.find_all().ok()?;
         let song = player.first()?.get_metadata().ok()?; // this is blocking
