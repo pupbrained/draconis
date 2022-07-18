@@ -10,8 +10,8 @@
 
 🪐 An out-of-this-world greeter for your terminal
 
-![image](https://user-images.githubusercontent.com/33522919/170403598-a04f7859-6130-4887-b291-77ef957a3034.png)
-![image](https://user-images.githubusercontent.com/33522919/170403547-eb078215-10b7-4c77-8cad-fde0b011946f.png)
+![image](https://user-images.githubusercontent.com/33522919/179458221-d44f7996-d214-46ee-8801-343767ef9295.png)
+![image](https://user-images.githubusercontent.com/33522919/179458079-ca750a6d-b1b4-44e4-a721-63e9250780db.png)
 
 ## Requirements
 
