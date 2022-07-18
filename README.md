@@ -25,8 +25,8 @@
 
 ## Installation
 - There are two options for installing draconis: 
-  - Run the command `cargo install draconis`.
-  - Get the binary from the releases and move it into a folder in your PATH.
+  - Run the command `cargo install draconis`
+  - Get the binary from the releases and move it into a folder in your PATH
 
 ## How to use
 
