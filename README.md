@@ -23,6 +23,11 @@
 - Update checking and package counting will take a long time, and slow down the program by quite a bit. This cannot be avoided because of the fact that these checks require external system commands. Only use these options if you don't mind losing a second or two of time every time you run the program.
   - NixOS does not support package update counting.
 
+## Installation
+- There are two options for installing draconis: 
+  - Run the command `cargo install draconis`.
+  - Get the binary from the releases and move it into a folder in your PATH.
+
 ## How to use
 
 - Grab the latest release binary and config files from the releases page
