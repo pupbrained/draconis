@@ -1,3 +1,5 @@
+use regex::Regex;
+
 pub mod funcs;
 pub mod util;
 
@@ -275,26 +277,38 @@ async fn main() {
         match CONF.icons.kind.as_deref() {
             Some("emoji") => {
                 if let Some(song) = song.as_ref() {
-                    println!(
-                        "{}",
-                        calc_whitespace_song(format!(
-                            "│ {} {}",
-                            MISC_EMOJIS[5],
-                            song.trim_matches('\n')
-                        ))
-                    );
+                    let cjk_regex = Regex::new(
+                        r"[\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}\p{Bopomofo}\p{Yi}]+",
+                    )
+                    .unwrap();
+                    if !cjk_regex.is_match(song) {
+                        println!(
+                            "{}",
+                            calc_whitespace_song(format!(
+                                "│ {} {}",
+                                MISC_EMOJIS[5],
+                                song.trim_matches('\n')
+                            ))
+                        );
+                    }
                 }
             }
             Some("normal") => {
                 if let Some(song) = song.as_ref() {
-                    println!(
-                        "{}",
-                        calc_whitespace_song(format!(
-                            "│ {} {}",
-                            MISC_ICONS[5],
-                            song.trim_matches('\n')
-                        ))
-                    );
+                    let cjk_regex = Regex::new(
+                        r"[\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}\p{Bopomofo}\p{Yi}]+",
+                    )
+                    .unwrap();
+                    if !cjk_regex.is_match(song) {
+                        println!(
+                            "{}",
+                            calc_whitespace_song(format!(
+                                "│ {} {}",
+                                MISC_ICONS[5],
+                                song.trim_matches('\n')
+                            ))
+                        );
+                    }
                 }
             }
             Some(&_) | None => {

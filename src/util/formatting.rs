@@ -1,6 +1,3 @@
-use regex::Regex;
-use substring::Substring;
-
 use {
     crate::util::statics::CONF, unicode_segmentation::UnicodeSegmentation,
     unicode_width::UnicodeWidthStr,
@@ -21,17 +18,8 @@ pub(crate) fn calc_whitespace(text: String) -> String {
 }
 
 pub(crate) fn calc_whitespace_song(text: String) -> String {
-    let regex = Regex::new(r"[\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}]").unwrap();
-    let size = if regex.is_match(text.as_str()) {
-        ((CONF.util.width - 3) as usize) - UnicodeWidthStr::width_cjk(text.as_str())
-    } else {
-        (CONF.util.width - 53) as usize
-    };
-    format!(
-        "{}... {}",
-        text.substring(0, (CONF.util.width - 9) as usize),
-        format!("{}{}", " ".repeat(size), "│")
-    )
+    let size = ((CONF.util.width - 3) as usize) - UnicodeWidthStr::width_cjk(text.as_str());
+    format!("{}{}", text, format!("{}{}", " ".repeat(size), "│"))
 }
 
 pub(crate) fn calc_with_hostname(text: String) -> String {
