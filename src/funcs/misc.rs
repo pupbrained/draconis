@@ -20,7 +20,7 @@ pub(crate) fn get_song() -> Option<String> {
             .args(&["metadata", "-f", "{{ artist }} - {{ title }}"])
             .output()
             .unwrap();
-        songname = String::from_utf8_lossy(&song.stdout).to_string();
+        songname = String::from_utf8_lossy(song.stdout.as_slice()).to_string();
         if songname.is_empty() {
             return None;
         }
@@ -34,7 +34,7 @@ pub(crate) fn get_song() -> Option<String> {
     if CONF.icons.enabled {
         match CONF.icons.kind.as_deref() {
             Some("emoji") => {
-                if songname.len() > CONF.util.width as usize {
+                if songname.len() > (CONF.util.width as usize) {
                     Some(format!(
                         "{}...",
                         songname.substring(0, (CONF.util.width - 14) as usize)
@@ -44,7 +44,7 @@ pub(crate) fn get_song() -> Option<String> {
                 }
             }
             Some(&_) | None => {
-                if songname.len() > CONF.util.width as usize {
+                if songname.len() > (CONF.util.width as usize) {
                     Some(format!(
                         "{}...",
                         songname.substring(0, (CONF.util.width - 14) as usize)
@@ -54,7 +54,7 @@ pub(crate) fn get_song() -> Option<String> {
                 }
             }
         }
-    } else if songname.len() > CONF.util.width as usize {
+    } else if songname.len() > (CONF.util.width as usize) {
         Some(format!(
             "{}...",
             songname.substring(0, (CONF.util.width - 14) as usize)

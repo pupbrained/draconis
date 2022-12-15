@@ -76,7 +76,7 @@ pub(crate) fn read_config() -> Config {
                 enabled = false
                 "#,
             )
-            .unwrap()
+            .unwrap();
         }
         Err(e) => panic!("{}", e),
         Ok(content) => match content.as_ref() {
@@ -130,7 +130,7 @@ pub(crate) fn read_config() -> Config {
                 enabled = false
                 "#,
                 )
-                .unwrap()
+                .unwrap();
             }
             _ => content,
         },
