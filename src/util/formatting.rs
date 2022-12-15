@@ -1,3 +1,5 @@
+use substring::Substring;
+
 use {
     crate::util::statics::CONF, unicode_segmentation::UnicodeSegmentation,
     unicode_width::UnicodeWidthStr,
@@ -18,8 +20,17 @@ pub(crate) fn calc_whitespace(text: String) -> String {
 }
 
 pub(crate) fn calc_whitespace_song(text: String) -> String {
-    let size = ((CONF.util.width - 3) as usize) - UnicodeWidthStr::width_cjk(text.as_str());
-    format!("{}{}", text, format!("{}{}", " ".repeat(size), "│"))
+    match ((CONF.util.width).overflowing_sub(3).0 as usize)
+        .overflowing_sub(UnicodeWidthStr::width_cjk(text.as_str()))
+    {
+        (_, false) => {
+            let size = ((CONF.util.width).overflowing_sub(3).0 as usize)
+                .overflowing_sub(UnicodeWidthStr::width_cjk(text.as_str()))
+                .0;
+            format!("{}{}", text, format!("{}{}", " ".repeat(size), "│"))
+        }
+        _ => format!("{}... │", text.substring(0, (CONF.util.width - 9) as usize),),
+    }
 }
 
 pub(crate) fn calc_with_hostname(text: String) -> String {
