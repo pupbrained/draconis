@@ -6,6 +6,10 @@
     };
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     utils.url = "github:numtide/flake-utils";
+    fenix = {
+      url = "github:nix-community/fenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = {
@@ -13,16 +17,31 @@
     nixpkgs,
     utils,
     naersk,
+    fenix,
   }:
     utils.lib.eachDefaultSystem (system: let
       pkgs = import nixpkgs {inherit system;};
       naersk-lib = pkgs.callPackage naersk {};
     in {
-      defaultPackage = naersk-lib.buildPackage {
-        root = ./.;
-        buildInputs = with pkgs; [dbus];
-        nativeBuildInputs = with pkgs; [pkg-config];
-      };
+      defaultPackage = let
+        pkgs = nixpkgs.legacyPackages.${system};
+        target = "aarch64-unknown-linux-gnu";
+        toolchain = with fenix.packages.${system};
+          combine [
+            minimal.cargo
+            minimal.rustc
+            targets.${target}.latest.rust-std
+          ];
+      in
+        (naersk.lib.${system}.override {
+          cargo = toolchain;
+          rustc = toolchain;
+        })
+        .buildPackage {
+          src = ./.;
+          CARGO_BUILD_TARGET = target;
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER = "${pkgs.pkgsCross.aarch64-multiplatform.stdenv.cc}/bin/${target}-gcc";
+        };
 
       defaultApp = utils.lib.mkApp {
         drv = self.defaultPackage."${system}";
