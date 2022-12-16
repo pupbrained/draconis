@@ -1,6 +1,9 @@
 {
   inputs = {
-    naersk.url = "github:nix-community/naersk/master";
+    naersk = {
+      url = "github:nix-community/naersk/master";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     utils.url = "github:numtide/flake-utils";
   };
@@ -27,7 +30,7 @@
 
       devShell = with pkgs;
         mkShell {
-          buildInputs = [cargo rustc rustfmt pre-commit rustPackages.clippy dbus];
+          buildInputs = [dbus];
           nativeBuildInputs = [pkg-config];
           RUST_SRC_PATH = rustPlatform.rustLibSrc;
         };
