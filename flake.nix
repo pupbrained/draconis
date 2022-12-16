@@ -39,6 +39,8 @@
         })
         .buildPackage {
           src = ./.;
+          buildInputs = with pkgs; [dbus];
+          nativeBuildInputs = with pkgs; [pkg-config];
           CARGO_BUILD_TARGET = target;
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER = "${pkgs.pkgsCross.aarch64-multiplatform.stdenv.cc}/bin/${target}-gcc";
         };
