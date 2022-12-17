@@ -25,7 +25,7 @@
     in {
       defaultPackage = let
         pkgs = nixpkgs.legacyPackages.${system};
-        target = "aarch64-unknown-linux-gnu";
+        target = "x86_64-unknown-linux-gnu";
         toolchain = with fenix.packages.${system};
           combine [
             minimal.cargo
