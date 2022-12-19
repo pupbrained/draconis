@@ -18,15 +18,28 @@ use {
 };
 
 thread_local! {
-  static LOGO: RefCell<Peekable<Lines<BufReader<File>>>>  =
-    RefCell::new(read_lines(format!("{}/.config/draconis/logo", home_dir().unwrap().to_string_lossy())).unwrap().peekable());
-  static LEN: RefCell<usize> = RefCell::new({
-    LOGO.with_borrow_mut(|f| {
-      let f_peeked = f.peek().unwrap().as_ref().unwrap().to_owned();
+  static LOGO: RefCell<Peekable<Lines<BufReader<File>>>> = RefCell::new(
+    read_lines(
+      format!("{}/.config/draconis/logo", home_dir().unwrap().to_string_lossy())
+    )
+      .unwrap()
+      .peekable()
+  );
 
-      f_peeked.replace("$C", "").replace("$B", "").as_str().width()
+  static LEN: RefCell<usize> = RefCell::new(
+    LOGO.with_borrow_mut(|f| {
+      f
+        .peek()
+        .unwrap()
+        .as_ref()
+        .unwrap()
+        .to_owned()
+        .replace("$C", "")
+        .replace("$B", "")
+        .as_str()
+        .width()
     })
-  });
+  );
 }
 
 #[tokio::main]
