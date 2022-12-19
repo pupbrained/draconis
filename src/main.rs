@@ -1,330 +1,120 @@
-use regex::Regex;
-
-pub mod funcs;
-pub mod util;
+#![feature(let_chains)]
+#![feature(local_key_cell_methods)]
 
 use {
-    crate::{
-        funcs::{
-            greet::{get_hostname, greeting},
-            misc::{get_datetime, get_song, get_weather},
-            pkgs::{count_updates, get_package_count},
-            system_info::{
-                get_disk_usage, get_environment, get_kernel_blocking, get_memory,
-                get_release_blocking,
-            },
-        },
-        util::{
-            formatting::{
-                calc_bottom, calc_whitespace, calc_whitespace_song, calc_with_hostname, upper_first,
-            },
-            statics::{CONF, MISC_EMOJIS, MISC_ICONS, PACKAGE_EMOJIS, PACKAGE_ICONS},
-        },
-    },
-    once_cell::sync::Lazy,
-    std::{process::exit, time::Instant},
-    tracing_subscriber::{
-        fmt::{format::FmtSpan, layer},
-        prelude::*,
-        EnvFilter,
-    },
+  colored::Colorize,
+  dirs::home_dir,
+  std::{
+    cell::RefCell,
+    fs::File,
+    io::{BufRead, BufReader, Lines, Result},
+    iter::Peekable,
+    os::unix::process::parent_id,
+    path::Path,
+  },
+  sysinfo::{Pid, PidExt, ProcessExt, System, SystemExt},
+  unicode_width::UnicodeWidthStr,
+  users::get_current_username,
 };
+
+thread_local! {
+  static LOGO: RefCell<Peekable<Lines<BufReader<File>>>>  =
+    RefCell::new(read_lines(format!("{}/.config/draconis/logo", home_dir().unwrap().to_string_lossy())).unwrap().peekable());
+  static LEN: RefCell<usize> = RefCell::new({
+    LOGO.with_borrow_mut(|f| {
+      let f_peeked = f.peek().unwrap().as_ref().unwrap().to_owned();
+
+      f_peeked.replace("$C", "").replace("$B", "").as_str().width()
+    })
+  });
+}
 
 #[tokio::main]
 async fn main() {
-    if CONF.util.width < 50 {
-        eprintln!("Width attribute must be at least 50, please change it.");
-        exit(1);
-    }
+  let mut sys = System::new_all();
+  sys.refresh_all();
 
-    tracing_subscriber::registry()
-        .with(
-            layer()
-                .pretty()
-                .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE),
-        )
-        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("warn")))
-        .init();
-
-    tracing::info!("Running");
-
-    let time = Instant::now();
-
-    Lazy::force(&CONF);
-
-    // These do not need to be spawned in any way, they are nonblocking
-    let hostname = get_hostname();
-    let greeting = greeting();
-    let datetime = get_datetime();
-    let memory = get_memory();
-    let disk = get_disk_usage();
-    let environment = get_environment();
-
-    // These are proper async functions
-    let weather = tokio::spawn(get_weather());
-    let up_count = tokio::spawn(count_updates());
-    let package_count = tokio::spawn(get_package_count());
-
-    // These are functions that block
-    let song = tokio::task::spawn_blocking(get_song);
-    let release = tokio::task::spawn_blocking(get_release_blocking);
-    let kernel = tokio::task::spawn_blocking(get_kernel_blocking);
-
-    let weather = weather.await.unwrap();
-    let up_count = up_count.await.unwrap();
-    let package_count = package_count.await.unwrap();
-
-    let song = song.await.unwrap();
-    let release = release.await.unwrap();
-    let kernel = kernel.await.unwrap();
-
-    tracing::info!(
-        "Finished collecting data in {:.3}",
-        time.elapsed().as_secs_f32()
-    );
-
-    if let Some(hostname) = hostname {
+  if
+        let Some(name) = sys.name() &&
+        let Some(kernel) = sys.kernel_version() &&
+        let Some(user) = get_current_username() &&
+        let Some(process) = sys.process(Pid::from_u32(parent_id()))
+    {
+        println!("{} {} {}", get_logo_line(), "╭─".green(), name);
+        println!("{} {} {}", get_logo_line(), "├─".green(), kernel);
         println!(
-            "{}",
-            calc_with_hostname(format!("╭─── \x1b[32m{}\x1b[0m ", hostname))
+            "{} {} {}",
+            get_logo_line(),
+            "├─".green(),
+            user.to_string_lossy()
         );
+        println!("{} {} {}", get_logo_line(), "╰─".green(), process.name());
+        println!("{} :", get_logo_line());
+        println!("{} :", get_logo_line());
+        println!("{} :", get_logo_line());
+        println!("{} :", get_logo_line());
+        println!("{} :", get_logo_line());
+        println!("{} :", get_logo_line());
+        println!("{} :", get_logo_line());
+        println!("{} :", get_logo_line());
+        println!("{} :", get_logo_line());
+        println!("{} :", get_logo_line());
+        println!("{} :", get_logo_line());
+        println!("{} :", get_logo_line());
+        println!("{} :", get_logo_line());
+        println!("{} :", get_logo_line());
+        println!("{} :", get_logo_line());
+        println!("{} :", get_logo_line());
+        println!("{} :", get_logo_line());
+        println!("{} :", get_logo_line());
+        println!("{} :", get_logo_line());
+        println!("{} :", get_logo_line());
+        println!("{} :", get_logo_line());
+        println!("{} :", get_logo_line());
+        println!("{} :", get_logo_line());
+        println!("{} :", get_logo_line());
     }
 
-    if let Some(greeting) = greeting {
-        println!("{}", calc_whitespace(format!("│ {}!", greeting)));
+  LOGO.with_borrow_mut(|f| {
+    for line in f {
+      let mut line = line.unwrap();
+
+      if line.contains("$C") {
+        line = line.replace("$C", "\x1b[36m")
+      }
+
+      if line.contains("$B") {
+        line = line.replace("$B", "\x1b[34m")
+      }
+
+      println!("{line}");
     }
+  });
+}
 
-    if let Some(datetime) = datetime {
-        println!("{}", calc_whitespace(datetime));
-    }
+fn read_lines<P>(filename: P) -> Result<Lines<BufReader<File>>>
+where
+  P: AsRef<Path>,
+{
+  let file = File::open(filename)?;
+  Ok(BufReader::new(file).lines())
+}
 
-    if let Some(weather) = weather {
-        println!("{}", calc_whitespace(weather));
-    }
+fn get_logo_line() -> String {
+  let len = LEN.with_borrow_mut(|f| f.clone());
+  LOGO.with_borrow_mut(|f| {
+    if let Some(line) = f.next() && let Ok(mut line) = line {
+      if line.contains("$C") {
+        line = line.replace("$C", "\x1b[36m")
+      }
 
-    if CONF.icons.enabled {
-        match CONF.icons.kind.as_deref() {
-            Some("emoji") => {
-                if let Some(release) = release {
-                    println!(
-                        "{}",
-                        calc_whitespace(format!("│ {} {}", MISC_EMOJIS[0], release))
-                    );
-                }
-                if let Some(kernel) = kernel {
-                    println!(
-                        "{}",
-                        calc_whitespace(format!("│ {} {}", MISC_EMOJIS[1], kernel))
-                    );
-                }
-                if let Some(memory) = memory {
-                    println!(
-                        "{}",
-                        calc_whitespace(format!("│ {} {}", MISC_EMOJIS[2], memory))
-                    );
-                }
-                if let Some(disk) = disk {
-                    println!(
-                        "{}",
-                        calc_whitespace(format!("│ {} {}", MISC_EMOJIS[3], disk))
-                    );
-                }
+      if line.contains("$B") {
+        line = line.replace("$B", "\x1b[34m")
+      }
 
-                if let Some(environment) = environment {
-                    println!(
-                        "{}",
-                        calc_whitespace(format!(
-                            "│ {} {}",
-                            MISC_EMOJIS[4],
-                            upper_first(environment)
-                        ))
-                    );
-                }
-            }
-            Some("normal") => {
-                if let Some(release) = release {
-                    println!(
-                        "{}",
-                        calc_whitespace(format!("│ {} {}", MISC_ICONS[0], release))
-                    );
-                }
-                if let Some(kernel) = kernel {
-                    println!(
-                        "{}",
-                        calc_whitespace(format!("│ {} {}", MISC_ICONS[1], kernel))
-                    );
-                }
-                if let Some(memory) = memory {
-                    println!(
-                        "{}",
-                        calc_whitespace(format!("│ {} {}", MISC_ICONS[2], memory))
-                    );
-                }
-                if let Some(disk) = disk {
-                    println!(
-                        "{}",
-                        calc_whitespace(format!("│ {} {}", MISC_ICONS[3], disk))
-                    );
-                }
-
-                if let Some(environment) = environment {
-                    println!(
-                        "{}",
-                        calc_whitespace(format!(
-                            "│ {} {}",
-                            MISC_ICONS[4],
-                            upper_first(environment)
-                        ))
-                    );
-                }
-            }
-            Some(&_) | None => {
-                if let Some(release) = release {
-                    println!("{}", calc_whitespace(format!("│ {}", release)));
-                }
-                if let Some(kernel) = kernel {
-                    println!("{}", calc_whitespace(format!("│ {}", kernel)));
-                }
-                if let Some(memory) = memory {
-                    println!("{}", calc_whitespace(format!("│ {}", memory)));
-                }
-                if let Some(disk) = disk {
-                    println!("{}", calc_whitespace(format!("│ {}", disk)));
-                }
-                if let Some(environment) = environment {
-                    println!(
-                        "{}",
-                        calc_whitespace(format!("│ {}", upper_first(environment)))
-                    );
-                }
-            }
-        }
+      line
     } else {
-        if let Some(release) = release {
-            println!("{}", calc_whitespace(format!("│ {}", release)));
-        }
-        if let Some(kernel) = kernel {
-            println!("{}", calc_whitespace(format!("│ {}", kernel)));
-        }
-        if let Some(memory) = memory {
-            println!("{}", calc_whitespace(format!("│ {}", memory)));
-        }
-        if let Some(disk) = disk {
-            println!("{}", calc_whitespace(format!("│ {}", disk)));
-        }
-
-        if let Some(environment) = environment {
-            println!(
-                "{}",
-                calc_whitespace(format!("│ {}", upper_first(environment)))
-            );
-        }
+      " ".repeat(len)
     }
-
-    if let Some(count) = up_count {
-        println!("{}", calc_whitespace(count));
-    }
-
-    if CONF.icons.enabled {
-        match CONF.icons.kind.as_deref() {
-            Some("emoji") => match package_count {
-                None => (),
-                Some(0) => println!(
-                    "{}",
-                    calc_whitespace(format!("│ {} No packages", PACKAGE_EMOJIS[12]))
-                ),
-                Some(1) => println!(
-                    "{}",
-                    calc_whitespace(format!("│ {} 1 package", PACKAGE_EMOJIS[12]))
-                ),
-                Some(n) => println!(
-                    "{}",
-                    calc_whitespace(format!("│ {} {} packages", PACKAGE_EMOJIS[12], n))
-                ),
-            },
-            Some("normal") => match package_count {
-                None => (),
-                Some(0) => println!(
-                    "{}",
-                    calc_whitespace(format!("│ {} No packages", PACKAGE_ICONS[11]))
-                ),
-                Some(1) => println!(
-                    "{}",
-                    calc_whitespace(format!("│ {} 1 package", PACKAGE_ICONS[11]))
-                ),
-                Some(n) => println!(
-                    "{}",
-                    calc_whitespace(format!("│ {} {} packages", PACKAGE_ICONS[11], n))
-                ),
-            },
-            Some(&_) | None => match package_count {
-                None => (),
-                Some(0) => println!("{}", calc_whitespace("│ No packages".to_string())),
-                Some(1) => println!("{}", calc_whitespace("│ 1 package".to_string())),
-                Some(n) => println!("{}", calc_whitespace(format!("│ {} packages", n))),
-            },
-        }
-    } else {
-        match package_count {
-            None => (),
-            Some(0) => println!("{}", calc_whitespace("│ No packages".to_string())),
-            Some(1) => println!("{}", calc_whitespace("│ 1 package".to_string())),
-            Some(n) => println!("{}", calc_whitespace(format!("│ {} packages", n))),
-        }
-    }
-
-    if CONF.icons.enabled {
-        match CONF.icons.kind.as_deref() {
-            Some("emoji") => {
-                if let Some(song) = song.as_ref() {
-                    let cjk_regex = Regex::new(
-                        r"[\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}\p{Bopomofo}\p{Yi}]+",
-                    )
-                    .unwrap();
-                    if !cjk_regex.is_match(song) {
-                        println!(
-                            "{}",
-                            calc_whitespace_song(format!(
-                                "│ {} {}",
-                                MISC_EMOJIS[5],
-                                song.trim_matches('\n')
-                            ))
-                        );
-                    }
-                }
-            }
-            Some("normal") => {
-                if let Some(song) = song.as_ref() {
-                    let cjk_regex = Regex::new(
-                        r"[\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}\p{Bopomofo}\p{Yi}]+",
-                    )
-                    .unwrap();
-                    if !cjk_regex.is_match(song) {
-                        println!(
-                            "{}",
-                            calc_whitespace_song(format!(
-                                "│ {} {}",
-                                MISC_ICONS[5],
-                                song.trim_matches('\n')
-                            ))
-                        );
-                    }
-                }
-            }
-            Some(&_) | None => {
-                if let Some(song) = song.as_ref() {
-                    println!(
-                        "{}",
-                        calc_whitespace_song(format!("│ {}", song.trim_matches('\n')))
-                    );
-                }
-            }
-        }
-    } else if let Some(song) = song.as_ref() {
-        println!(
-            "{}",
-            calc_whitespace_song(format!("│ {}", song.trim_matches('\n')))
-        );
-    }
-    println!("{}", calc_bottom("╰".into()));
+  })
 }
